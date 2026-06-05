@@ -1,0 +1,14 @@
+# NEVER UPLOAD THESE:
+config.js
+.env
+.env.local
+local-build.js
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+

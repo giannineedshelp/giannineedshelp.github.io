@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Notifications - GIOAI v6.0</title>
+  <link rel="stylesheet" href="styles.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    .notif-container { max-width: 600px; margin: 2rem auto; padding: 0 1rem; }
+    .notif-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; flex-wrap: wrap; gap: .5rem; }
+    .notif-header h1 { font-size: 1.5rem; color: var(--accent); }
+    .notif-item {
+      background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 1rem; margin-bottom: .6rem; transition: all .15s;
+    }
+    .notif-item.unread { border-color: var(--accent); background: var(--accent-glow); }
+    .notif-item .notif-text { font-size: .9rem; color: var(--text); margin-bottom: .3rem; }
+    .notif-item .notif-date { font-size: .75rem; color: var(--text3); }
+    .notif-item .notif-badge { display: inline-block; font-size: .65rem; padding: .1rem .4rem; border-radius: 4px; margin-right: .4rem; }
+    .notif-item .notif-badge.announcement { background: var(--accent); color: #fff; }
+    .notif-item .notif-badge.changelog { background: var(--success); color: #000; }
+    .empty-notif { text-align: center; color: var(--text3); padding: 3rem 0; }
+    .back-link { display: inline-flex; align-items: center; gap: .3rem; padding: .5rem 1rem; background: var(--bg2); border: 1px solid var(--border); border-radius: var(--rs); text-decoration: none; color: var(--text2); font-size: .85rem; margin-bottom: 1rem; }
+    .back-link:hover { border-color: var(--accent); color: var(--text); }
+  </style>
+</head>
+<body>
+  <div class="notif-container">
+    <div class="notif-header">
+      <div>
+        <a href="index.html" class="back-link">&#x2190; Back</a>
+        <h1>&#x1F514; Notifications</h1>
+      </div>
+      <button id="markAllReadBtn" class="btn btn-sm">Mark All Read</button>
+    </div>
+    <div id="notifList">
+      <div class="empty-notif">No notifications yet.</div>
+    </div>
+    <div style="text-align:center;margin-top:1rem">
+      <a href="index.html" class="btn btn-sm">&#x2190; Back to Hub</a>
+    </div>
+  </div>
+  <script>
+    (function() {
+      function loadNotifications() {
+        var container = document.getElementById('notifList');
+        if (!container) return;
+        try {
+          var ann = JSON.parse(localStorage.getItem('gioai-announcements') || '[]');
+          var seen = JSON.parse(localStorage.getItem('gioai-notif-seen') || '[]');
+          if (ann.length === 0) {
+            container.innerHTML = '<div class="empty-notif">No notifications yet.</div>';
+            return;
+          }
+          var html = '';
+          for (var i = ann.length - 1; i >= 0; i--) {
+            var a = ann[i];
+            var isUnread = seen.indexOf(a.time) === -1;
+            var type = a.type || 'announcement';
+            html += '<div class="notif-item' + (isUnread ? ' unread' : '') + '">' +
+              '<div class="notif-text"><span class="notif-badge ' + type + '">' + type + '</span>' + a.text + '</div>' +
+              '<div class="notif-date">' + new Date(a.time).toLocaleString() + '</div></div>';
+          }
+          container.innerHTML = html;
+        } catch(e) {
+          container.innerHTML = '<div class="empty-notif">Error loading notifications.</div>';
+        }
+      }
+
+      function markAllRead() {
+        try {
+          var ann = JSON.parse(localStorage.getItem('gioai-announcements') || '[]');
+          var seen = [];
+          for (var i = 0; i < ann.length; i++) {
+            seen.push(ann[i].time);
+          }
+          localStorage.setItem('gioai-notif-seen', JSON.stringify(seen));
+          loadNotifications();
+        } catch(e) {}
+      }
+
+      loadNotifications();
+      var markBtn = document.getElementById('markAllReadBtn');
+      if (markBtn) markBtn.addEventListener('click', markAllRead);
+    })();
+  </script>
+</body>
+</html>
+

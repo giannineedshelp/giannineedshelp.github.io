@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Seneca Learning - GIOAI v6.0</title>
+  <link rel="stylesheet" href="styles.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Sidebar -->
+    <nav id="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-logo">GIOAI</div>
+        <button id="sidebarClose">&times;</button>
+      </div>
+      <div id="sidebarUser" class="sidebar-user">Not logged in</div>
+      <ul class="nav-list">
+        <li class="nav-item active" data-screen="dashboardScreen">&#x1F4CA; Dashboard</li>
+        <li class="nav-item" data-screen="historyScreen">&#x1F4CB; History</li>
+        <li class="nav-item" data-screen="settingsScreen">&#x2699; Settings</li>
+      </ul>
+      <div class="sidebar-footer">
+        <a href="index.html" class="nav-item">&#x2190; Back to Hub</a>
+        <a href="#" id="navLogout" class="nav-item" style="color:var(--danger)">&#x1F6AA; Logout</a>
+        <a href="notifications.html" class="nav-item" style="font-size:.75rem">&#x1F514; Notifications</a>
+        <a href="admin.html" class="nav-item" style="font-size:.75rem">Admin</a>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="main-content">
+      <!-- Loading Screen -->
+      <div id="loadingScreen" class="screen active">
+        <div class="loading-content">
+          <div class="loading-logo">GIOAI</div>
+          <div class="loading-spinner"></div>
+          <div style="color:var(--text3);font-size:.85rem">Loading Seneca Learning...</div>
+          <button id="loadingSkip" class="btn btn-sm" style="margin-top:.5rem">Skip &rarr;</button>
+        </div>
+      </div>
+
+      <div id="mainApp">
+        <!-- Disclaimer Screen -->
+        <div id="disclaimerScreen" class="screen screen-container">
+          <div class="screen-card">
+            <h2>&#x26A0; Disclaimer</h2>
+            <div class="disclaimer-box">
+              <ul>
+                <li>You are using it solely to assist with your own homework</li>
+                <li>You understand the material being completed</li>
+                <li>Your school's policies permit such assistance</li>
+                <li>You will not misuse this tool for cheating</li>
+              </ul>
+            </div>
+            <div class="warning-check">
+              <input type="checkbox" id="disclaimerCheck">
+              <label for="disclaimerCheck">I agree to the terms above</label>
+            </div>
+            <button id="disclaimerContinue" class="btn btn-primary" disabled>Continue</button>
+          </div>
+        </div>
+
+        <!-- Login Screen -->
+        <div id="loginScreen" class="screen screen-container">
+          <div class="screen-card">
+            <div class="login-info">
+              <button id="loginBack" class="btn btn-sm">&#x2190; Back</button>
+              <span>Logging into:</span>
+              <span id="loginTitle" class="platform-badge">&#x1F4DA; Seneca Learning</span>
+            </div>
+            <div style="font-size:.75rem;color:var(--danger);margin-bottom:.5rem;padding:.4rem;background:rgba(255,107,107,0.1);border-radius:var(--rs)">
+              Status: Broken — API may not work
+            </div>
+            <div class="login-form">
+              <input type="text" id="username" placeholder="Username/Email" autocomplete="username">
+              <input type="password" id="password" placeholder="Password" autocomplete="current-password">
+              <div id="savedAccountsContainer" style="display:none;margin-bottom:.4rem">
+                <select id="savedAccountsSelect" style="font-size:.8rem">
+                  <option value="">-- Saved Accounts --</option>
+                </select>
+              </div>
+              <button id="loginBtn" class="btn btn-primary">Login</button>
+              <label style="font-size:.75rem;color:var(--text3);display:flex;align-items:center;gap:.4rem;margin-top:.2rem">
+                <input type="checkbox" id="saveAccountCheck" style="width:auto"> Save account
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dashboard Screen -->
+        <div id="dashboardScreen" class="screen screen-container">
+          <div class="screen-card">
+            <h2>&#x1F4CA; Seneca Dashboard</h2>
+            <div class="dash-stats">
+              <div class="stat"><span id="statCompleted">0</span><small>Completed</small></div>
+              <div class="stat"><span id="statXP">0</span><small>XP Earned</small></div>
+              <div class="stat"><span id="statErrors">0</span><small>Errors</small></div>
+            </div>
+            <div class="dash-controls">
+              <button id="fetchTasksBtn" class="btn btn-primary">Fetch Tasks</button>
+              <button id="completeSelectedBtn" class="btn btn-success">&#x25B6; Complete Selected</button>
+              <button id="stopBtn" class="btn btn-danger" disabled>&#x25A0; Stop</button>
+            </div>
+            <div class="dash-extra-controls" style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.6rem">
+              <label style="font-size:.75rem;color:var(--text2);display:flex;align-items:center;gap:.3rem">
+                <input type="checkbox" id="showPastHmwk" style="width:auto"> Show past homework
+              </label>
+            </div>
+            <div class="progress-container" id="progressContainer">
+              <div class="progress-bar" id="progressBar"></div>
+              <div id="progressText">0/0 (0%)</div>
+            </div>
+            <div class="task-list" id="taskList">
+              <div class="empty-state">No tasks fetched yet. Login and click "Fetch Tasks".</div>
+            </div>
+            <h3 style="font-size:.85rem;color:var(--text3);margin-bottom:.4rem">Activity Log</h3>
+            <div class="log-box" id="logContent">
+              <div style="color:var(--text3)">Log will appear here...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- History Screen -->
+        <div id="historyScreen" class="screen screen-container">
+          <div class="screen-card">
+            <h2>&#x1F4CB; History</h2>
+            <div style="margin-bottom:.6rem">
+              <label style="font-size:.8rem;color:var(--text2);display:flex;align-items:center;gap:.3rem">
+                <input type="checkbox" id="historyShowPastHmwk" style="width:auto"> Show past homework
+              </label>
+            </div>
+            <div id="historyContent" class="empty-state">No history yet. Complete some tasks first.</div>
+          </div>
+        </div>
+
+        <!-- Settings Screen -->
+        <div id="settingsScreen" class="screen screen-container">
+          <div class="screen-card">
+            <h2>&#x2699; Seneca Settings</h2>
+            <div class="setting-group">
+              <h3>Timing</h3>
+              <label>Min Delay Per Question (s): <input type="range" id="delayMin" min="1" max="30" value="5"></label>
+              <label>Max Delay Per Question (s): <input type="range" id="delayMax" min="1" max="30" value="8"></label>
+              <div id="delayVal" style="font-size:.8rem;color:var(--text3);margin-top:.2rem">5s - 8s</div>
+            </div>
+            <div class="setting-group">
+              <h3>Features</h3>
+              <label><input type="checkbox" id="showPastHmwkSettings" style="width:auto"> Show past homework in history</label>
+              <label><input type="checkbox" id="animatedToggle" checked style="width:auto"> Animated UI</label>
+            </div>
+            <div class="setting-group">
+              <h3>Theme</h3>
+              <label>
+                <select id="themeSelect">
+                  <option value="dark">Dark</option>
+                  <option value="light">Light</option>
+                  <option value="midnight">Midnight</option>
+                  <option value="amber">Amber</option>
+                  <option value="ocean">Ocean</option>
+                  <option value="forest">Forest</option>
+                  <option value="sunset">Sunset</option>
+                  <option value="candy">Candy</option>
+                </select>
+              </label>
+            </div>
+            <div class="setting-group">
+              <h3>Saved Accounts</h3>
+              <div id="savedAccountsList" style="font-size:.8rem"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <script src="script.js" data-platform="seneca"></script>
+</body>
+</html>
+
