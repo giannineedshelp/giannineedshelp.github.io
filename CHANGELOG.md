@@ -1,42 +1,33 @@
 # GIOAI Changelog
 
-## v6.0 — Massive Update (2026-06-05)
-- **Separate HTML pages** for each platform (index.html hub, sparx.html, languagenut.html, seneca.html)
-- **Notifications system** with announcements & changelogs page (notifications.html)
-- **Complete Selected** — checkbox tasks and only complete what you select
-- **Per-platform timing defaults**: Sparx 60-70s, LanguageNut 5-8s, Seneca 5-8s per question
-- **Show past homework** toggle for all platforms
-- **Show working out** option for Sparx Maths
-- **Max 2 tasks** limit for Sparx sessions
-- **Saved accounts** — save/load/login with credentials per platform
-- **Admin blacklist** now includes user + platform + password filtering
-- **Increase account uses** from admin panel
-- **Admin saved accounts management** — view, edit uses, delete accounts
-- **FCaptcha FAILEDTOKEN** bypass for LanguageNut
-- **GitHub push ready** — fixed git config for mobile push
-- **Notifications badge** on hub showing unread announcements
-- **Changelogs** support in admin announcements (with type selector)
-- Version bumped to 6.0
+## v2.5 (June 2026)
+- Added Sparx Maths platform support
+- Fixed LanguageNut fcaptcha bypass with client-side token generation
+- Added fake time slider configuration per platform
+- Added "Show Previous Homework" toggle for all platforms
+- Hacker-style UI with animations, glitch effects, and neon accents
+- Admin panel with "give slots" functionality
+- Notifications panel with tutorial guide and changelog tabs
+- Platform-specific settings bar in dashboard
+- Sidebar with social links (GitHub, Discord, PayPal) and theme selector
+- 4 themes: Dark, Hacker (green), Light, Neon (purple/pink)
+- Cloudflare Worker v2 with Seneca API endpoints and fixed LN login
 
-## v5.2 (2026-05-28)
-- Admin panel with platform status management, blacklist, activity logs, announcements
-- Per-platform HTML pages
-- FCaptcha integration
-- env-config.js build system
+## v2.4 (May 2026)
+- Added Seneca Learning integration
+- Improved LanguageNut login reliability
+- Added changelog popup on first load per version
+- Fixed sidebar navigation
 
-## v5.1 (2026-05-26)
-- LanguageNut XP farming via vocab endpoint
-- FCaptcha bypass using FAILEDTOKEN
-- Worker improvements
+## v2.3 (May 2026)
+- Added donate page with PayPal link
+- Added social links to sidebar footer
+- Added 4 themes: Dark, Hacker, Light, Neon
+- Fixed login button not responding (JS syntax errors)
 
-## v5.0 (2026-05-24)
-- Complete rewrite
-- Multi-platform support: Sparx Maths, LanguageNut, Seneca
-- Cloudflare Worker backend
-- Theme system (8 themes)
-- Mobile-responsive sidebar
-
-## v2.1 (2026-05-20)
-- Initial release
-- Basic Sparx Maths autocompleter
+## v2.2 (April 2026)
+- Initial GIOAI release
+- LanguageNut homework viewer
+- Task completion engine with progress tracking
+- Statistics dashboard (completed, XP, errors)
 

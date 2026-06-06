@@ -1,91 +1,376 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GIOAI v6.0</title>
-  <link rel="stylesheet" href="styles.css">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <style>
-    .hub-header { text-align: center; padding: 2rem 0 1rem; }
-    .hub-header h1 { font-size: 2.2rem; font-weight: 800; color: var(--accent); margin-bottom: .3rem; }
-    .hub-header p { color: var(--text3); font-size: .9rem; }
-    .hub-grid { display: flex; flex-wrap: wrap; gap: 1rem; justify-content: center; max-width: 700px; margin: 1.5rem auto; }
-    .hub-card {
-      display: flex; flex-direction: column; align-items: center; gap: .5rem;
-      padding: 1.5rem 1.2rem; background: var(--bg2); border: 1px solid var(--border);
-      border-radius: var(--radius); cursor: pointer; transition: all .2s;
-      min-width: 150px; flex: 1; max-width: 200px; text-decoration: none; color: var(--text);
-    }
-    .hub-card:hover { border-color: var(--accent); transform: translateY(-3px); box-shadow: var(--accent-glow) 0 0 25px; }
-    .hub-card img { width: 56px; height: 56px; object-fit: contain; border-radius: 8px; }
-    .hub-card .platform-name { font-size: .9rem; font-weight: 600; }
-    .hub-card .platform-status { font-size: .7rem; color: var(--text3); }
-    .hub-card .platform-status.working { color: var(--success); }
-    .hub-card .platform-status.broken { color: var(--danger); }
-    .hub-card .platform-status.unstable { color: var(--warning); }
-    .hub-extra { display: flex; gap: .8rem; justify-content: center; flex-wrap: wrap; margin-top: .8rem; }
-    .hub-extra a {
-      display: flex; align-items: center; gap: .4rem; padding: .6rem 1.2rem;
-      background: var(--bg2); border: 1px solid var(--border); border-radius: var(--rs);
-      text-decoration: none; color: var(--text2); font-size: .85rem; transition: all .15s;
-    }
-    .hub-extra a:hover { border-color: var(--accent); color: var(--text); }
-    .notif-badge { background: var(--danger); color: #fff; font-size: .65rem; padding: .1rem .45rem; border-radius: 10px; margin-left: .3rem; }
-    .hub-footer { text-align: center; font-size: .75rem; color: var(--text3); margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--border); }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>GIOAI - Autocompleter Hub</title>
+<link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="app-layout" style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1rem">
-    <div style="width:100%;max-width:700px">
-      <div class="hub-header">
-        <h1>GIOAI</h1>
-        <p>v6.0 — Multi-Platform Homework Autocompleter</p>
-        <div style="margin-top:.5rem;font-size:.8rem;color:var(--text3)">
-          <span id="notifCount" style="display:none" class="notif-badge">0</span>
+
+<!-- ===== TOAST CONTAINER ===== -->
+<div id="toastContainer"></div>
+
+<!-- ===== LOADING SCREEN ===== -->
+<div id="loadingScreen" class="screen active">
+  <div class="loader-container">
+    <div class="loader-ring"></div>
+    <div class="loader-text">
+      <span class="glitch" data-text="GIOAI">GIOAI</span>
+      <div class="loader-sub">Initializing systems...</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== DISCLAIMER ===== -->
+<div id="disclaimer" class="screen">
+  <div class="disclaimer-box">
+    <div class="disclaimer-icon">⚠</div>
+    <h2>Disclaimer</h2>
+    <p>GIOAI is an educational automation tool. Use responsibly and in accordance with your institution's policies. Automated completion of assignments may violate terms of service.</p>
+    <label class="disclaimer-check">
+      <input type="checkbox" id="disclaimerAgree">
+      <span>I understand and accept the risks</span>
+    </label>
+    <button id="disclaimerContinue" class="btn" disabled>Continue</button>
+  </div>
+</div>
+
+<!-- ===== CHANGELOG OVERLAY ===== -->
+<div id="changelogOverlay" class="overlay">
+  <div class="changelog-modal">
+    <div class="changelog-header">
+      <h2>📋 What's New</h2>
+      <button id="changelogClose" class="btn-icon">✕</button>
+    </div>
+    <div class="changelog-body" id="changelogBody">
+      <div class="changelog-placeholder">Loading changelog...</div>
+    </div>
+    <div class="changelog-footer">
+      <button id="changelogDismiss" class="btn">Got it!</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== NOTIFICATIONS OVERLAY ===== -->
+<div id="notifOverlay" class="overlay">
+  <div class="notif-modal">
+    <div class="notif-header">
+      <h2>🔔 Notifications & Help</h2>
+      <button id="notifClose" class="btn-icon">✕</button>
+    </div>
+    <div class="notif-body">
+      <div class="notif-tabs">
+        <button class="notif-tab active" data-tab="tutorial">📖 Tutorial</button>
+        <button class="notif-tab" data-tab="changelog">📋 Changelog</button>
+      </div>
+      <div class="notif-content">
+        <div class="notif-pane active" id="tutorialPane">
+          <div class="tutorial-guide">
+            <h3>Quick Start Guide</h3>
+            <div class="tutorial-step">
+              <span class="step-num">1</span>
+              <div><strong>Select a Platform</strong> - Choose LanguageNut, Seneca, or Sparx from the hub.</div>
+            </div>
+            <div class="tutorial-step">
+              <span class="step-num">2</span>
+              <div><strong>Log In</strong> - Enter your credentials for the selected platform.</div>
+            </div>
+            <div class="tutorial-step">
+              <span class="step-num">3</span>
+              <div><strong>Configure Settings</strong> - Set fake time delays and other options per platform.</div>
+            </div>
+            <div class="tutorial-step">
+              <span class="step-num">4</span>
+              <div><strong>Fetch & Complete</strong> - Load your homework and start auto-completion.</div>
+            </div>
+            <div class="tutorial-step">
+              <span class="step-num">5</span>
+              <div><strong>Monitor Progress</strong> - Watch real-time logs and progress bars.</div>
+            </div>
+          </div>
         </div>
-      </div>
-
-      <div class="hub-grid">
-        <a href="sparx.html" class="hub-card">
-          <img src="sparx%20maths.png" alt="Sparx" onerror="this.outerHTML='<div style=font-size:2rem>\u2716</div>'">
-          <span class="platform-name">Sparx Maths</span>
-          <span class="platform-status working">Stable</span>
-        </a>
-        <a href="languagenut.html" class="hub-card">
-          <img src="Languagenut.png" alt="LN" onerror="this.outerHTML='<div style=font-size:2rem>\ud83c\udf10</div>'">
-          <span class="platform-name">LanguageNut</span>
-          <span class="platform-status unstable">Unstable</span>
-        </a>
-        <a href="seneca.html" class="hub-card">
-          <img src="seneca.png" alt="Seneca" onerror="this.outerHTML='<div style=font-size:2rem>\ud83d\udcda</div>'">
-          <span class="platform-name">Seneca Learning</span>
-          <span class="platform-status broken">Broken</span>
-        </a>
-      </div>
-
-      <div class="hub-extra">
-        <a href="notifications.html" id="notifLink">&#x1F514; Notifications</a>
-        <a href="admin.html">&#x2699; Admin Panel</a>
-        <a href="https://www.paypal.com/paypalme/giannineedshelp" target="_blank">&#x2665; Donate</a>
-      </div>
-
-      <div class="hub-footer">
-        GIOAI v6.0 — By giannineedshelp
+        <div class="notif-pane" id="changelogPane">
+          <div class="changelog-list" id="changelogList">Loading...</div>
+        </div>
       </div>
     </div>
   </div>
-  <script>
-    try {
-      var ann = JSON.parse(localStorage.getItem('gioai-announcements') || '[]');
-      var seen = JSON.parse(localStorage.getItem('gioai-notif-seen') || '[]');
-      var unread = ann.filter(function(a) { return seen.indexOf(a.time) === -1; });
-      if (unread.length > 0) {
-        var badge = document.getElementById('notifCount');
-        if (badge) { badge.textContent = unread.length; badge.style.display = 'inline-block'; }
-      }
-    } catch(e) {}
-  </script>
+</div>
+
+<!-- ===== NOTIFICATION BELL ===== -->
+<div class="notif-bell" id="notifBell">
+  <span class="bell-icon">🔔</span>
+  <span class="bell-badge" id="notifBadge">1</span>
+</div>
+
+<!-- ===== SIDEBAR ===== -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <h2>GIOAI</h2>
+    <button id="sidebarClose" class="btn-icon">✕</button>
+  </div>
+  <div class="sidebar-links">
+    <a href="#" class="sidebar-link active" data-screen="hubScreen"><span class="s-icon">🏠</span> Hub</a>
+    <a href="#" class="sidebar-link" data-screen="dashboardScreen"><span class="s-icon">📊</span> Dashboard</a>
+    <a href="#" class="sidebar-link" data-screen="settingsScreen"><span class="s-icon">⚙️</span> Settings</a>
+    <a href="#" class="sidebar-link" data-screen="donateScreen"><span class="s-icon">💰</span> Donate</a>
+    <a href="#" class="sidebar-link" data-screen="adminScreen"><span class="s-icon">🛡️</span> Admin Panel</a>
+  </div>
+  <div class="sidebar-footer">
+    <div class="social-links">
+      <a href="https://github.com/giannineedshelp" target="_blank" class="social-link" title="GitHub">🐙</a>
+      <a href="https://discord.gg/kmPgEJEGx" target="_blank" class="social-link" title="Discord">💬</a>
+      <a href="https://www.paypal.me/giannikeita" target="_blank" class="social-link" title="PayPal">💳</a>
+    </div>
+    <div class="theme-selector">
+      <button class="theme-btn active" data-theme="dark" title="Dark">🌙</button>
+      <button class="theme-btn" data-theme="hacker" title="Hacker">💚</button>
+      <button class="theme-btn" data-theme="light" title="Light">☀️</button>
+      <button class="theme-btn" data-theme="neon" title="Neon">🌈</button>
+    </div>
+    <div class="version">v<span id="appVersion">2.3</span></div>
+  </div>
+</nav>
+
+<!-- ===== HAMBURGER ===== -->
+<button id="hamburgerBtn" class="hamburger" aria-label="Menu">
+  <span></span><span></span><span></span>
+</button>
+
+<!-- ===== HUB SCREEN ===== -->
+<div id="hubScreen" class="screen">
+  <div class="hub-header">
+    <h1><span class="glitch" data-text="GIOAI">GIOAI</span></h1>
+    <p class="hub-subtitle">Autocompleter Hub — Select a platform</p>
+  </div>
+  <div class="hub-cards">
+    <div class="hub-card" data-platform="languagenut">
+      <div class="card-icon">🌍</div>
+      <h3>LanguageNut</h3>
+      <p>Auto-complete language exercises, farm XP, submit homework with fake timestamps.</p>
+      <span class="card-status" id="lnutStatus">Ready</span>
+    </div>
+    <div class="hub-card" data-platform="seneca">
+      <div class="card-icon">📚</div>
+      <h3>Seneca Learning</h3>
+      <p>Complete courses, answer questions, build study sessions with realistic timing.</p>
+      <span class="card-status" id="senecaStatus">Ready</span>
+    </div>
+    <div class="hub-card" data-platform="sparx">
+      <div class="card-icon">➗</div>
+      <h3>Sparx Maths</h3>
+      <p>Math homework solver, bookwork checks, AI-powered question answering.</p>
+      <span class="card-status" id="sparxStatus">Ready</span>
+    </div>
+  </div>
+</div>
+
+<!-- ===== PLATFORM-SPECIFIC LOGIN ===== -->
+<div id="platformLoginScreen" class="screen">
+  <button class="back-btn" id="backToHub">← Back to Hub</button>
+  <div class="login-container">
+    <div class="login-header">
+      <h2 id="platformLoginTitle">Login</h2>
+      <div class="login-platform-badge" id="loginPlatformBadge">🌍</div>
+    </div>
+    <div class="login-status" id="loginStatus" style="display:none">
+      <span id="loginStatusText"></span>
+    </div>
+    <div class="form-group">
+      <label for="platformUsername">Username / Email</label>
+      <input type="text" id="platformUsername" placeholder="Enter your username" autocomplete="off">
+    </div>
+    <div class="form-group">
+      <label for="platformPassword">Password</label>
+      <input type="password" id="platformPassword" placeholder="Enter your password" autocomplete="off">
+    </div>
+    <div class="seneca-extra" id="senecaLoginExtra" style="display:none">
+      <div class="form-group">
+        <label>Login Method</label>
+        <select id="senecaLoginMethod">
+          <option value="email">Email & Password</option>
+          <option value="google">Google (redirect)</option>
+          <option value="microsoft">Microsoft (redirect)</option>
+        </select>
+      </div>
+    </div>
+    <div class="sparx-extra" id="sparxLoginExtra" style="display:none">
+      <div class="form-group">
+        <label>School ID</label>
+        <input type="text" id="sparxSchoolId" placeholder="Optional" value="1">
+      </div>
+    </div>
+    <button id="platformLoginBtn" class="btn btn-primary">Authenticate</button>
+    <div class="login-hint">Press Enter to submit</div>
+  </div>
+</div>
+
+<!-- ===== PLATFORM DASHBOARD ===== -->
+<div id="dashboardScreen" class="screen">
+  <div class="dash-header">
+    <div class="dash-user">
+      <span class="status-dot offline" id="dashStatusDot"></span>
+      <span id="dashUserDisplay">Not logged in</span>
+    </div>
+    <div class="dash-actions">
+      <span id="dashPlatformBadge" class="platform-badge">🌍</span>
+      <button id="dashSettingsBtn" class="btn-icon" title="Settings">⚙️</button>
+      <button id="dashLogoutBtn" class="btn-icon" title="Logout">🚪</button>
+    </div>
+  </div>
+
+  <!-- Platform-specific settings bar -->
+  <div class="platform-settings-bar" id="platformSettingsBar">
+    <div class="ps-group">
+      <label>Min Delay</label>
+      <input type="range" id="psDelayMin" min="1" max="30" value="5" step="0.5">
+      <span id="psDelayMinVal">5s</span>
+    </div>
+    <div class="ps-group">
+      <label>Max Delay</label>
+      <input type="range" id="psDelayMax" min="1" max="30" value="8" step="0.5">
+      <span id="psDelayMaxVal">8s</span>
+    </div>
+    <div class="ps-group" id="psFakeTimeGroup">
+      <label>Fake Time</label>
+      <input type="range" id="psFakeTime" min="0" max="12" value="4" step="0.1">
+      <span id="psFakeTimeVal">10,000s</span>
+    </div>
+    <div class="ps-group">
+      <label class="toggle-label">
+        <input type="checkbox" id="psShowPrevHmwk">
+        <span>Show Prev Homework</span>
+      </label>
+    </div>
+  </div>
+
+  <!-- Tasks area -->
+  <div class="dash-main">
+    <div class="dash-controls">
+      <button id="dashFetchBtn" class="btn">Fetch Tasks</button>
+      <button id="dashStartBtn" class="btn btn-primary">Start All</button>
+      <button id="dashStopBtn" class="btn btn-danger" disabled>Stop</button>
+    </div>
+    <div class="dash-progress">
+      <div class="progress-bar-bg">
+        <div class="progress-fill" id="dashProgressFill" style="width:0%"></div>
+      </div>
+      <span id="dashProgressText">0 / 0 tasks (0%)</span>
+    </div>
+    <div class="dash-stats">
+      <div class="stat-box"><span class="stat-label">Completed</span><span class="stat-value" id="dashStatCompleted">0</span></div>
+      <div class="stat-box"><span class="stat-label">XP/Score</span><span class="stat-value" id="dashStatXp">0</span></div>
+      <div class="stat-box"><span class="stat-label">Errors</span><span class="stat-value" id="dashStatErrors">0</span></div>
+    </div>
+    <div class="dash-tasks" id="dashTasks">
+      <div class="empty-state">Click "Fetch Tasks" to load assignments</div>
+    </div>
+    <div class="dash-log" id="dashLog">
+      <div class="log-header">Activity Log</div>
+      <div class="log-entries" id="dashLogEntries"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SETTINGS SCREEN ===== -->
+<div id="settingsScreen" class="screen">
+  <div class="settings-container">
+    <div class="settings-header">
+      <h2>⚙️ Settings</h2>
+      <button id="settingsBackBtn" class="btn-icon">✕</button>
+    </div>
+    <div class="settings-body">
+      <div class="settings-section">
+        <h3>Theme</h3>
+        <div class="theme-selector-lg">
+          <button class="theme-btn-lg active" data-theme="dark">🌙 Dark</button>
+          <button class="theme-btn-lg" data-theme="hacker">💚 Hacker</button>
+          <button class="theme-btn-lg" data-theme="light">☀️ Light</button>
+          <button class="theme-btn-lg" data-theme="neon">🌈 Neon</button>
+        </div>
+      </div>
+      <div class="settings-section">
+        <h3>Default Delays</h3>
+        <div class="setting-row">
+          <label>Min Delay (seconds)</label>
+          <input type="number" id="settingsDelayMin" min="1" max="60" value="5">
+        </div>
+        <div class="setting-row">
+          <label>Max Delay (seconds)</label>
+          <input type="number" id="settingsDelayMax" min="1" max="60" value="8">
+        </div>
+      </div>
+      <div class="settings-section">
+        <h3>Notifications</h3>
+        <label class="toggle-label">
+          <input type="checkbox" id="settingsNotifComplete" checked>
+          <span>Notify on batch complete</span>
+        </label>
+        <label class="toggle-label">
+          <input type="checkbox" id="settingsNotifError" checked>
+          <span>Notify on errors</span>
+        </label>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== DONATE SCREEN ===== -->
+<div id="donateScreen" class="screen">
+  <div class="donate-container">
+    <div class="donate-header">
+      <h2>💰 Support GIOAI</h2>
+      <button id="donateBackBtn" class="btn-icon">✕</button>
+    </div>
+    <div class="donate-body">
+      <p>GIOAI is free to use. If you find it useful, consider supporting development!</p>
+      <a href="https://www.paypal.me/giannikeita" target="_blank" class="btn btn-paypal">💳 Donate with PayPal</a>
+      <button class="btn" disabled>💳 Donate with Card (Coming Soon)</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== ADMIN SCREEN ===== -->
+<div id="adminScreen" class="screen">
+  <div class="admin-container">
+    <div class="admin-header">
+      <h2>🛡️ Admin Panel</h2>
+      <button id="adminBackBtn" class="btn-icon">✕</button>
+    </div>
+    <div class="admin-body">
+      <div class="admin-section">
+        <h3>Give Slots</h3>
+        <div class="form-group">
+          <label>Username</label>
+          <input type="text" id="adminUsername" placeholder="Target username">
+        </div>
+        <div class="form-group">
+          <label>Amount</label>
+          <input type="number" id="adminAmount" placeholder="Slots to add" min="1" value="1">
+        </div>
+        <div class="form-group">
+          <label>Admin Key</label>
+          <input type="password" id="adminKey" placeholder="Admin secret key">
+        </div>
+        <button id="adminGiveSlotsBtn" class="btn btn-primary">Give Slots</button>
+        <div id="adminResult" class="admin-result"></div>
+      </div>
+      <div class="admin-section">
+        <h3>Platform Status</h3>
+        <div id="adminPlatformStatus">
+          <div class="platform-status-item"><span class="ps-name">LanguageNut API</span><span class="ps-indicator checking">Checking...</span></div>
+          <div class="platform-status-item"><span class="ps-name">Seneca API</span><span class="ps-indicator checking">Checking...</span></div>
+          <div class="platform-status-item"><span class="ps-name">Sparx API</span><span class="ps-indicator checking">Checking...</span></div>
+          <div class="platform-status-item"><span class="ps-name">Worker</span><span class="ps-indicator checking">Checking...</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="script.js"></script>
 </body>
 </html>
 

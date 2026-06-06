@@ -323,6 +323,15 @@ function init() {
     });
   }
 
+  // Skip button
+  var skipBtn = document.getElementById('lnut_skip');
+  if (skipBtn) {
+    skipBtn.addEventListener('click', function() {
+      document.getElementById('loading_screen').classList.remove('active');
+      showScreen('login_screen');
+    });
+  }
+
   // Logout
   var logoutBtn = document.getElementById('logout_btn');
   if (logoutBtn) {
@@ -661,5 +670,6 @@ if (document.readyState === 'loading') {
 }
 
 })();
+
 
 

@@ -80,6 +80,13 @@
               <span class="selected-school-label" id="sparxSelectedSchoolDisplay"></span>
             </div>
             <div class="login-form" style="margin-top:.8rem">
+              <div id="login_progress_container" style="display:none;margin-bottom:.6rem;background:var(--bg3);padding:.4rem;border-radius:var(--rs);border:1px solid var(--accent)">
+                <div style="display:flex;justify-content:space-between;font-size:.65rem;margin-bottom:.2rem">
+                  <span id="login_status_text" style="color:var(--accent);font-weight:600">Starting login...</span>
+                  <span id="login_status_pct">0%</span>
+                </div>
+                <div class="task-bar" style="height:4px;background:var(--bg2)"><div id="login_status_bar" class="task-bar-fill" style="width:0%;background:var(--accent)"></div></div>
+              </div>
               <input type="text" id="username" placeholder="Username" autocomplete="username">
               <input type="password" id="password" placeholder="Password" autocomplete="current-password">
               <div id="savedAccountsContainer" style="display:none;margin-bottom:.4rem">
@@ -192,4 +199,5 @@
   <script src="script.js" data-platform="sparx"></script>
 </body>
 </html>
+
 

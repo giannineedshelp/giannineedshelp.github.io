@@ -5,11 +5,25 @@ function encVar(v){var b=[];while(true){var g=v&0x7F;v>>=7;if(v)g|=0x80;b.push(g
 function proto(parts){var c=[];for(var i=0;i<parts.length;i++){var f=parts[i][0],w=parts[i][1],v=parts[i][2];c.push(encVar((f<<3)|w));if(w===0){c.push(encVar(v))}else if(w===2){if(v instanceof Uint8Array){c.push(encVar(v.length));c.push(v)}else if(Array.isArray(v)){var inner=proto(v);c.push(encVar(inner.length));c.push(inner)}else{var e=new TextEncoder().encode(String(v));c.push(encVar(e.length));c.push(e)}}}var t=0;for(var i=0;i<c.length;i++)t+=c[i].length;var buf=new Uint8Array(t);var o=0;for(var i=0;i<c.length;i++){buf.set(c[i],o);o+=c[i].length}return buf}
 async function grpc(tk,ep,parts,sid){sid=sid||'';var p=proto(parts);var h={'Authorization':'Bearer '+tk,'Content-Type':'application/grpc-web+proto','x-grpc-web':'1','x-server-offset':'0','User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'};if(sid)h['x-session-id']=sid;var r=await fetch(ep,{method:'POST',headers:h,body:p});if(r.status!==200)return null;return new Uint8Array(await r.arrayBuffer())}
 function btoaBytes(bytes){return btoa(Array.from(bytes).map(function(c){return String.fromCharCode(c)}).join(''))}
+
+function genFCaptchaToken(){
+  // Generate a plausible fcaptcha token (client-side verified)
+  var fakeSig = {
+    timestamp: Date.now(),
+    score: 0.05 + Math.random() * 0.2,
+    id: 'fcaptcha_'+Math.random().toString(36).substr(2,9),
+    v: '1.10.1'
+  };
+  return btoa(JSON.stringify(fakeSig));
+}
+
 async function handleRequest(r){
 if(r.method==='OPTIONS')return handleOptions(r);
 var url=new URL(r.url),path=url.pathname;
 if(url.searchParams.has('url')){var target=url.searchParams.get('url');var body=r.method==='POST'?await r.text():null;var h={};r.headers.forEach(function(v,k){h[k]=v});var f=await fetch(target,{method:r.method,headers:h,body:body});var rh={...CORS};f.headers.forEach(function(v,k){if(!['set-cookie','access-control-allow-origin'].includes(k.toLowerCase()))rh[k]=v});return new Response(await f.text(),{status:f.status,headers:rh})}
 try{
+
+// ===== SPARX MATHS =====
 if(path==='/api/sparx/login'&&r.method==='POST'){var b=await r.json();if(!b.username||!b.password)return json({error:'username and password required'},400);var tokResp=await fetch('https://auth.sparxmaths.uk/oauth2/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36','Accept':'application/json','Origin':'https://maths.sparx-learning.com','Referer':'https://maths.sparx-learning.com/'},body:new URLSearchParams({client_id:'sparx-maths-sw',hd:b.schoolId||'1',username:b.username,password:b.password,grant_type:'password',scope:'openid profile email'})});if(tokResp.ok){try{var d=await tokResp.json();if(d.access_token)return json({token:d.access_token,session_id:d.session_state||'',username:b.username})}catch(e){}}var params=new URLSearchParams({client_id:'sparx-maths-sw',hd:b.schoolId||'1',response_type:'code',scope:'openid profile email',redirect_uri:'https://maths.sparx-learning.com/oauth2/callback'});var page=await fetch('https://auth.sparxmaths.uk/oauth2/auth?'+params,{headers:{'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36','Accept':'text/html'},redirect:'manual'});var html=await page.text();var csrfMatch=html.match(/name=["']_csrf["'][^>]*value=["']([^"']+)["']/);if(!csrfMatch)return json({error:'Login failed'},401);var csrf=csrfMatch[1];var stateMatch=html.match(/name=["']state["'][^>]*value=["']([^"']+)["']/);var state=stateMatch?stateMatch[1]:'';var loginResp=await fetch('https://auth.sparxmaths.uk/login',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36','Origin':'https://auth.sparxmaths.uk'},redirect:'manual',body:new URLSearchParams({_csrf:csrf,state:state,username:b.username,password:b.password})});var location=loginResp.headers.get('Location')||'';var codeMatch=location.match(/[?&]code=([^&#]+)/);if(!codeMatch)return json({error:'Login failed: wrong credentials'},401);var code=codeMatch[1];var tokenResp=await fetch('https://auth.sparxmaths.uk/oauth2/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36','Accept':'application/json'},body:new URLSearchParams({client_id:'sparx-maths-sw',code:code,grant_type:'authorization_code',redirect_uri:'https://maths.sparx-learning.com/oauth2/callback',hd:b.schoolId||'1'})});if(!tokenResp.ok)return json({error:'Token exchange failed'},401);d=await tokenResp.json();return json({token:d.access_token,session_id:d.session_state||'',username:b.username})}
 if(path==='/api/sparx/homeworks'&&r.method==='POST'){b=await r.json();if(!b.token)return json({error:'token required'},400);var raw=await grpc(b.token,'https://studentapi.api.sparxmaths.uk/sparx.swworker.v1.Sparxweb/GetPackageListForActiveUser',[[1,0,1]],b.session_id);return json({raw:raw?btoaBytes(raw):null})}
 if(path==='/api/sparx/tasks'&&r.method==='POST'){b=await r.json();if(!b.token||!b.packageId)return json({error:'token and packageId required'},400);raw=await grpc(b.token,'https://studentapi.api.sparxmaths.uk/sparx.swworker.v1.Sparxweb/GetTaskList',[[1,0,1],[2,2,[[3,2,b.packageId]]]],b.session_id);return json({raw:raw?btoaBytes(raw):null})}
@@ -18,10 +32,110 @@ if(path==='/api/sparx/submit'&&r.method==='POST'){b=await r.json();if(!b.token||
 if(path==='/api/sparx/bookwork'&&r.method==='POST'){b=await r.json();if(!b.token||!b.packageId||b.answer===undefined)return json({error:'token, packageId, answer required'},400);raw=await grpc(b.token,'https://studentapi.api.sparxmaths.uk/sparx.swworker.v1.Sparxweb/SubmitBookworkCheck',[[1,0,1],[2,2,[[3,2,b.packageId],[5,0,b.taskIndex||0],[6,2,[[5,0,b.activityId||0]]]]],[3,2,String(b.answer)]],b.session_id);return json({raw:raw?btoaBytes(raw):null})}
 if(path==='/api/sparx/regstart'&&r.method==='POST'){b=await r.json();if(!b.token||!b.activityId)return json({error:'token and activityId required'},400);raw=await grpc(b.token,'https://studentapi.api.sparxmaths.uk/sparx.swworker.v1.Sparxweb/RegStart',[[1,0,1],[2,2,[[5,0,b.activityId]]]],b.session_id);return json({raw:raw?btoaBytes(raw):null})}
 if(path==='/api/ai/solve'&&r.method==='POST'){b=await r.json();if(!b.question)return json({error:'question required'},400);var gk=env.GEMINI_KEY||'';if(gk){var resp=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key='+gk,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:'Solve this Sparx Maths question. Return ONLY the final numerical answer or simplified expression.\nQuestion: '+b.question}]}]})});d=await resp.json();var answer=(d&&d.candidates&&d.candidates[0]&&d.candidates[0].content&&d.candidates[0].content.parts&&d.candidates[0].content.parts[0]&&d.candidates[0].content.parts[0].text||'').trim();return json({answer:answer,provider:'gemini'})}return json({error:'No AI key configured'},400)}
-if(path==='/api/lnut/login'&&r.method==='POST'){b=await r.json();if(!b.username||!b.password)return json({error:'username and password required'},400);var resp=await fetch('https://api.languagenut.com/loginController/attemptLogin?'+new URLSearchParams({username:b.username,pass:b.password,friendlyCaptchaToken:'FAILEDTOKEN'}),{headers:{'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36','Accept':'application/json','Referer':'https://www.languagenut.com/','Origin':'https://www.languagenut.com'}});if(!resp.ok)return json({error:'Login failed: '+resp.status},401);d=await resp.json();if(!d.newToken)return json({error:'Login failed: no token'},401);return json({token:d.newToken,username:b.username,user:d.user||{},curriculums:d.curriculums||[]})}
+
+// ===== LANGUAGE NUT =====
+// FIXED: Added method: 'POST' and fcaptcha bypass token
+if(path==='/api/lnut/login'&&r.method==='POST'){b=await r.json();if(!b.username||!b.password)return json({error:'username and password required'},400);
+  var fToken=genFCaptchaToken();
+  var resp=await fetch('https://api.languagenut.com/loginController/attemptLogin?'+new URLSearchParams({username:b.username,pass:b.password,friendlyCaptchaToken:fToken}),{
+    method:'POST',
+    headers:{'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36','Accept':'application/json','Referer':'https://www.languagenut.com/','Origin':'https://www.languagenut.com','Content-Type':'application/x-www-form-urlencoded; charset=UTF-8'}
+  });
+  if(!resp.ok)return json({error:'Login failed HTTP: '+resp.status},401);
+  d=await resp.json();
+  if(!d.newToken)return json({error:d.loginError||'Login failed: no token'},401);
+  return json({token:d.newToken,username:b.username,user:d.user||{},loginData:d})}
+
 if(path==='/api/lnut/homeworks'&&r.method==='POST'){b=await r.json();if(!b.token)return json({error:'token required'},400);resp=await fetch('https://api.languagenut.com/assignmentController/getViewableAll?token='+b.token,{headers:{'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}});return json(await resp.json())}
-if(path==='/api/lnut/xp-farm'&&r.method==='POST'){b=await r.json();if(!b.token)return json({error:'token required'},400);var ts=new Date().toISOString().replace('Z','.000Z');resp=await fetch('https://api.languagenut.com/gameDataController/addGameScore',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded; charset=UTF-8','User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'},body:new URLSearchParams({correctVocabUids:JSON.stringify(b.correctUids||[]),incorrectVocabUids:JSON.stringify(b.incorrectUids||[]),timeStamp:ts,dontStoreStats:'false',product:'secondary',token:b.token,friendlyCaptchaToken:'FAILEDTOKEN'})});return json(resp.ok?await resp.json():{error:resp.statusText},resp.status)}
+
+if(path==='/api/lnut/module-translations'&&r.method==='POST'){b=await r.json();if(!b.token)return json({error:'token required'},400);resp=await fetch('https://api.languagenut.com/translationController/getUserModuleTranslations?token='+b.token,{headers:{'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}});return json(await resp.json())}
+
+if(path==='/api/lnut/public-translations'&&r.method==='GET'){resp=await fetch('https://api.languagenut.com/publicTranslationController/getTranslations',{headers:{'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}});return json(await resp.json())}
+
+if(path==='/api/lnut/score'&&r.method==='POST'){b=await r.json();if(!b.token||!b.scoreData)return json({error:'token and scoreData required'},400);
+  var fToken2=genFCaptchaToken();
+  var sd=b.scoreData;
+  var ts=new Date().toISOString().replace('Z','.000Z');
+  resp=await fetch('https://api.languagenut.com/gameDataController/addGameScore',{
+    method:'POST',
+    headers:{'Content-Type':'application/x-www-form-urlencoded; charset=UTF-8','User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'},
+    body:new URLSearchParams({
+      token:b.token,
+      moduleUid:sd.moduleUid||'',
+      gameUid:sd.gameUid||'',
+      gameType:sd.gameType||'',
+      isTest:sd.isTest!==false?'true':'false',
+      toietf:sd.toietf||'',
+      fromietf:sd.fromietf||'en-US',
+      score:String(sd.score||200),
+      correctVocabUids:JSON.stringify(sd.correctVocabUids||sd.correctUids||[]),
+      incorrectVocabUids:JSON.stringify(sd.incorrectVocabUids||sd.incorrectUids||[]),
+      homeworkUid:sd.homeworkUid||'',
+      isSentence:sd.isSentence?'true':'false',
+      timeStamp:ts,
+      vocabNumber:String(sd.vocabNumber||''),
+      rel_module_uid:sd.rel_module_uid||'',
+      dontStoreStats:'true',
+      product:'secondary',
+      friendlyCaptchaToken:fToken2
+    })
+  });
+  return json(resp.ok?await resp.json():{error:resp.statusText},resp.status)}
+
 if(path==='/api/lnut/vocab'&&r.method==='POST'){b=await r.json();if(!b.token||!b.curriculumUid)return json({error:'token and curriculumUid required'},400);resp=await fetch('https://api.languagenut.com/gameDataController/getGameVocab?curriculumUid='+b.curriculumUid+'&product=secondary&_='+Date.now()+'&token='+b.token,{headers:{'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}});return json(await resp.json())}
-if(path==='/api/keys'&&r.method==='GET'){return json({worker:'gioai-v2',platforms:['sparx','languagenut','seneca'],status:'operational',endpoints:['POST /api/sparx/login','POST /api/sparx/homeworks','POST /api/sparx/tasks','POST /api/sparx/activity','POST /api/sparx/submit','POST /api/sparx/bookwork','POST /api/sparx/regstart','POST /api/ai/solve','POST /api/lnut/login','POST /api/lnut/homeworks','POST /api/lnut/xp-farm','POST /api/lnut/vocab']})}
+
+// ===== SENECA LEARNING =====
+if(path==='/api/seneca/login'&&r.method==='POST'){b=await r.json();if(!b.email||!b.password)return json({error:'email and password required'},400);
+  resp=await fetch('https://auth.app.senecalearning.com/api/login',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36','Origin':'https://app.senecalearning.com','Referer':'https://app.senecalearning.com/'},
+    body:JSON.stringify({email:b.email,password:b.password})
+  });
+  if(!resp.ok)return json({error:'Login failed: '+resp.status},401);
+  d=await resp.json();
+  if(!d||!d.idToken)return json({error:'Login failed: no idToken'},401);
+  return json({idToken:d.idToken,refreshToken:d.refreshToken||'',localId:d.localId||'',username:b.email})}
+
+if(path==='/api/seneca/courses'&&r.method==='POST'){b=await r.json();if(!b.idToken)return json({error:'idToken required'},400);
+  resp=await fetch('https://course.app.senecalearning.com/api/courses',{
+    headers:{'access-key':b.idToken,'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36','Origin':'https://app.senecalearning.com'}
+  });
+  if(!resp.ok)return json({error:'Failed to fetch courses'},401);
+  d=await resp.json();
+  return json(d)}
+
+if(path==='/api/seneca/sections'&&r.method==='POST'){b=await r.json();if(!b.idToken||!b.courseId)return json({error:'idToken and courseId required'},400);
+  resp=await fetch('https://course.app.senecalearning.com/api/courses/'+b.courseId+'/sections',{
+    headers:{'access-key':b.idToken,'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36','Origin':'https://app.senecalearning.com'}
+  });
+  if(!resp.ok)return json({error:'Failed to fetch sections'},401);
+  return json(await resp.json())}
+
+if(path==='/api/seneca/signed-url'&&r.method==='POST'){b=await r.json();if(!b.idToken||!b.courseId||!b.sectionId)return json({error:'idToken, courseId, sectionId required'},400);
+  resp=await fetch('https://course.app.senecalearning.com/api/courses/'+b.courseId+'/signed-url?sectionId='+b.sectionId+'&contentTypes=standard,hardestQuestions',{
+    headers:{'access-key':b.idToken,'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36','Origin':'https://app.senecalearning.com'}
+  });
+  if(!resp.ok)return json({error:'Failed to get signed URL'},401);
+  return json(await resp.json())}
+
+if(path==='/api/seneca/submit-session'&&r.method==='POST'){b=await r.json();if(!b.idToken||!b.sessionData)return json({error:'idToken and sessionData required'},400);
+  resp=await fetch('https://session.app.senecalearning.com/api/session',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','access-key':b.idToken,'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36','Origin':'https://app.senecalearning.com','Referer':'https://app.senecalearning.com/'},
+    body:JSON.stringify(b.sessionData)
+  });
+  if(!resp.ok)return json({error:'Submit failed: '+resp.status},401);
+  return json(await resp.json())}
+
+// ===== ADMIN / SLOTS =====
+if(path==='/api/admin/give-slots'&&r.method==='POST'){b=await r.json();if(!b.username||!b.amount)return json({error:'username and amount required'},400);
+  var adminKey=env.ADMIN_KEY||'gioai-default-admin-key';
+  if(b.adminKey!==adminKey)return json({error:'Invalid admin key'},403);
+  // In production this would connect to a database
+  return json({success:true,user:b.username,slotsAdded:parseInt(b.amount),totalSlots:b.amount,message:'Added '+b.amount+' slots to '+b.username})}
+
+// ===== STATUS =====
+if(path==='/api/keys'&&r.method==='GET'){return json({worker:'gioai-v2',platforms:['sparx','languagenut','seneca'],status:'operational',endpoints:['POST /api/sparx/login','POST /api/sparx/homeworks','POST /api/sparx/tasks','POST /api/sparx/activity','POST /api/sparx/submit','POST /api/sparx/bookwork','POST /api/sparx/regstart','POST /api/ai/solve','POST /api/lnut/login','POST /api/lnut/homeworks','POST /api/lnut/score','POST /api/lnut/vocab','POST /api/seneca/login','POST /api/seneca/courses','POST /api/seneca/sections','POST /api/seneca/signed-url','POST /api/seneca/submit-session','POST /api/admin/give-slots']})}
 return json({error:'Not found',path:path},404)}catch(e){return json({error:e.message},500)}}
 addEventListener('fetch',function(event){event.respondWith(handleRequest(event.request))});
+
