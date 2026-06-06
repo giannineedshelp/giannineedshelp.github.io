@@ -1,33 +1,27 @@
 #!/bin/bash
-# GIOAI Git Push Helper
-# Usage: bash gitpush.sh <your_github_token>
-# Get token: GitHub -> Settings -> Developer settings -> Personal access tokens -> Fine-grained tokens
-# Needed permissions: Contents (read/write)
+# GIOAI v6.0 - Auto Git Push Script (Sanitized)
+# Keys are loaded from .env which is in .gitignore
 
-GIT_DIR="$(dirname "$0")/.git"
-GIT_WORK_TREE="$(dirname "$0")"
+DIR="/sdcard/Documents/gioai"
+if [ ! -d "$DIR" ]; then DIR="/storage/shared/Documents/gioai"; fi
 
-# Add all changes
-GIT_DIR="$GIT_DIR" GIT_WORK_TREE="$GIT_WORK_TREE" git add -A
-
-# Commit
-GIT_DIR="$GIT_DIR" GIT_WORK_TREE="$GIT_WORK_TREE" git commit -m "Update $(date +%Y-%m-%d_%H:%M)"
-
-if [ -n "$1" ]; then
-    # Use token if provided
-    GIT_DIR="$GIT_DIR" GIT_WORK_TREE="$GIT_WORK_TREE" git push "https://$1@github.com/giannineedshelp/GIOAI.github.io.git" main
-else
-    echo ""
-    echo "No token provided. To push, run:"
-    echo "  bash gitpush.sh YOUR_GITHUB_TOKEN"
-    echo ""
-    echo "Or manually:"
-    echo "  cd $(dirname "$0")"
-    echo "  git add -A && git commit -m \"update\" && git push"
-    echo ""
-    echo "To create a token:"
-    echo "  1. Go to https://github.com/settings/tokens"
-    echo "  2. Generate new token (classic) with 'repo' scope"
-    echo "  3. Run: bash gitpush.sh YOUR_TOKEN"
+if [ ! -f "$DIR/.env" ]; then
+    echo "Error: .env not found"
+    exit 1
 fi
 
+# Extract token from .env
+GH_TOKEN=$(grep "GITHUB_TOKEN=" "$DIR/.env" | cut -d'=' -f2)
+
+if [ -z "$GH_TOKEN" ]; then
+    echo "Error: GITHUB_TOKEN not found in .env"
+    exit 1
+fi
+
+git -C "$DIR" config user.name "giannineedshelp"
+git -C "$DIR" config user.email "gianni.kei@gmail.com"
+git -C "$DIR" remote set-url origin "https://giannineedshelp:${GH_TOKEN}@github.com/giannineedshelp/giannineedshelp.github.io.git"
+
+git -C "$DIR" add .
+git -C "$DIR" commit -m "Update v6.0: Consolidated LanguageNut & UI fixes (Clean)"
+git -C "$DIR" push origin main --force
