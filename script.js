@@ -715,11 +715,11 @@ function init() {
 
   // Boot animation sequence
   bootAnimate();
-  // Hide app loading after delay and show disclaimer
+  // Hide app loading after boot animation finishes
   setTimeout(function() {
     if ($.appLoading) $.appLoading.classList.remove('active');
     showScreen('disclaimer');
-  }, 1800);
+  }, 2200);
 
   // === SIDEBAR ===
   bind($.hamburgerBtn, 'click', toggleSidebar);
@@ -945,6 +945,7 @@ if (document.readyState === 'loading') {
 }
 
 })();
+
 
 
 
