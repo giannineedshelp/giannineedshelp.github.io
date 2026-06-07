@@ -14,13 +14,13 @@ var WORKER_URL = 'https://gioai.giannikei12.workers.dev';
 var $ = {};
 function cache() {
   var ids = [
-    'appLoading','sidebar','sidebarOverlay','sidebarClose','sidebarLinks','hamburgerBtn','sidebarUserName','sidebarUserPlatform','sidebarVersion',
+    'appLoading','sidebar','sidebarOverlay','sidebarClose','hamburgerBtn','sidebarUserName','sidebarUserPlatform','sidebarVersion',
     'disclaimer','disclaimerAgree','disclaimerContinue',
-    'hubScreen','hubCards',
+    'hubScreen',
     'platformLoginScreen','platformLoginTitle','loginPlatformBadge','platformUsername','platformPassword','platformLoginBtn','loginStatus','loginStatusText','backToHub',
     'senecaLoginExtra','sparxLoginExtra','sparxSchoolSearch','sparxSchoolResults','sparxSchoolId',
     'plSvgLn','plSvgSe','plSvgSp','plText','plSub','platformLoading',
-    'dashboardScreen','dashUserDisplay','dashStatusDot','dashPlatformBadge','dashTasks','dashLogEntries','dashFetchBtn','dashStartBtn','dashStopBtn','dashLogoutBtn','dashSettingsBtn','dashStatCompleted','dashStatXp','dashStatErrors','dashProgressFill','dashProgressText','dashFetchTasksBtn',
+    'dashboardScreen','dashUserDisplay','dashStatusDot','dashPlatformBadge','dashTasks','dashLogEntries','dashFetchBtn','dashStartBtn','dashStopBtn','dashLogoutBtn','dashSettingsBtn','dashStatCompleted','dashStatXp','dashStatErrors','dashProgressFill','dashProgressText',
     'settingsScreen','settingsBackBtn','settingsDelayMin','settingsDelayMax','settingsShowWorking','settingsAiProvider',
     'psDelayMin','psDelayMax','psFakeTime','psDelayMinVal','psDelayMaxVal','psFakeTimeVal','psShowPrevHmwk','psShowWorking','psFakeTimeGroup','psShowWorkingGroup',
     'adminScreen','adminBackBtn','adminUsername','adminAmount','adminKey','adminGiveSlotsBtn','adminResult','adminPlatformStatus',
@@ -30,20 +30,19 @@ function cache() {
     'adminCheckPlatformsBtn',
     'donateScreen','donateBackBtn',
     'changelogOverlay','changelogClose','changelogDismiss','changelogBody','changelogList',
-    'notifOverlay','notifClose','notifBadge','notifBell','notifTabs','notifPanes',
-    'notifList','announcementList',
-    'disclaimerAgreeChk','disclaimerContinueBtn',
+    'notifOverlay','notifClose','notifBadge','notifBell',
+    'announcementList',
     'statusScreen','statusContent',
     'appVersion','bootLines','bootProgress','bootStatus'
   ];
   for (var i = 0; i < ids.length; i++) {
     $[ids[i]] = document.getElementById(ids[i]);
   }
-  // Convert HTMLCollections to arrays
-  if ($.sidebarLinks) $.sidebarLinks = Array.from($.sidebarLinks);
-  if ($.hubCards) $.hubCards = Array.from($.hubCards);
-  if ($.notifTabs) $.notifTabs = Array.from($.notifTabs);
-  if ($.notifPanes) $.notifPanes = Array.from($.notifPanes);
+  // Class-based queries (elements without unique IDs)
+  $.sidebarLinks = Array.from(document.querySelectorAll('.sidebar-link'));
+  $.hubCards = Array.from(document.querySelectorAll('.hub-card'));
+  $.notifTabs = Array.from(document.querySelectorAll('.notif-tab'));
+  $.notifPanes = Array.from(document.querySelectorAll('.notif-pane'));
 }
 
 function bind(el, ev, fn) { if (el) el.addEventListener(ev, fn); }
@@ -1195,4 +1194,5 @@ if (document.readyState === 'loading') {
 }
 
 })();
+
 
