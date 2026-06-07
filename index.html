@@ -13,12 +13,20 @@
 
 <!-- ===== LOADING SCREEN (App Start) ===== -->
 <div id="appLoading" class="screen active">
-  <div class="app-loader">
-    <div class="loader-ring"></div>
-    <div class="loader-text">
-      <span class="glitch" data-text="GIOAI">GIOAI</span>
-      <div class="loader-sub">Initializing systems...</div>
+  <div class="boot-container">
+    <div class="boot-logo">
+      <pre class="boot-ascii">
+  ____ ___   ___  _ 
+ / ___/ _ \ / _ \/_|
+| |  | | | | | | | |
+| |__| |_| | |_| | |
+ \____\___/ \___/ |_|</pre>
     </div>
+    <div class="boot-progress-wrap">
+      <div class="boot-progress-bar" id="bootProgress"></div>
+    </div>
+    <div class="boot-lines" id="bootLines"></div>
+    <div class="boot-status" id="bootStatus">Starting services...</div>
   </div>
 </div>
 
@@ -408,4 +416,6 @@
 <script src="script.js"></script>
 </body>
 </html>
+
+
 

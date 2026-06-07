@@ -624,6 +624,42 @@ function giveSlots() {
   });
 }
 
+// ===== BOOT ANIMATION =====
+function bootAnimate() {
+  var lines = [
+    { text: 'Initializing kernel modules...', type: 'ok' },
+    { text: 'Mounting core services...', type: 'ok' },
+    { text: 'Loading AI engine (Gemini/Groq/Mistral)...', type: 'ok' },
+    { text: 'Establishing secure worker tunnel...', type: 'info' },
+    { text: 'Syncing platform configurations...', type: 'ok' },
+    { text: 'Starting GIOAI v' + APP_VERSION + '...', type: 'ok' }
+  ];
+  var container = document.getElementById('bootLines');
+  var progress = document.getElementById('bootProgress');
+  var status = document.getElementById('bootStatus');
+  if (!container) return;
+  var i = 0;
+  function addLine() {
+    if (i >= lines.length) {
+      if (status) status.textContent = 'Ready. Starting interface...';
+      return;
+    }
+    var l = lines[i];
+    var div = document.createElement('div');
+    div.className = 'boot-line';
+    var tag = l.type === 'warn' ? 'WARN' : l.type === 'info' ? 'INFO' : '  OK  ';
+    var cls = l.type === 'warn' ? 'warn' : l.type === 'info' ? 'info' : 'ok';
+    div.innerHTML = '<span class="boot-ts ' + cls + '">[' + tag + ']</span> ' + l.text;
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+    if (progress) progress.style.width = ((i + 1) / lines.length * 100) + '%';
+    if (status) status.textContent = l.text;
+    i++;
+    setTimeout(addLine, 200 + Math.random() * 150);
+  }
+  addLine();
+}
+
 // ===== CHANGELOG =====
 function renderChangelog() {
   var html = '<div class="changelog-list">' +
@@ -649,25 +685,7 @@ function renderChangelog() {
   if ($.changelogBody) $.changelogBody.innerHTML = html;
   if ($.changelogList) $.changelogList.innerHTML = html;
 }
-    '<h3>v3.0 (June 2026)</h3><ul>' +
-    '<li>Sparx school search (type school name)</li>' +
-    '<li>AI working out generation (Gemini + Groq + Mistral)</li>' +
-    '<li>Platform loading screens with animated SVGs</li>' +
-    '<li>Hacker theme = v5.2 matrix style with scanlines</li>' +
-    '<li>Show previous homework for Sparx (completed/past due)</li>' +
-    '<li>FCaptcha jitter + anti-tracking bypass</li>' +
-    '<li>Working out toggle in Sparx settings</li>' +
-    '<li>AI provider selector (Auto / Gemini / Groq / Mistral)</li>' +
-    '<li>User agent rotation for anti-detection</li>' +
-    '<li>Improved UI with SVG logos on hub cards</li>' +
-    '</ul>' +
-    '<h3>v2.5 (June 2026)</h3><ul>' +
-    '<li>Unified single-page app with all platforms</li>' +
-    '<li>4 themes: Dark, Hacker, Light, Neon</li>' +
-    '<li>Admin panel with give slots</li>' +
-    '<li>Seneca API proxy endpoints</li>' +
-    '</ul></div>';
-}
+
 
 function showChangelog() {
   if ($.changelogOverlay) $.changelogOverlay.style.display = 'flex';
@@ -695,11 +713,13 @@ function init() {
   cache();
   setTheme(S.theme);
 
+  // Boot animation sequence
+  bootAnimate();
   // Hide app loading after delay and show disclaimer
   setTimeout(function() {
     if ($.appLoading) $.appLoading.classList.remove('active');
     showScreen('disclaimer');
-  }, 800);
+  }, 1800);
 
   // === SIDEBAR ===
   bind($.hamburgerBtn, 'click', toggleSidebar);
@@ -925,6 +945,9 @@ if (document.readyState === 'loading') {
 }
 
 })();
+
+
+
 
 
 
