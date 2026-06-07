@@ -45,9 +45,8 @@ addEventListener('fetch',function(event){
 
     // ===== SPARX SCHOOL SEARCH =====
     if(path==='/api/sparx/search-school'&&r.method==='POST'){var b=await r.json();if(!b.query)return json({error:'query required'},400);
-      var schools=await(await fetch('https://static.sparx-learning.com/sl/spx001/data.txt')).text();
-      var lines=schools.split('\n').slice(1);
-      var results=lines.map(function(l){var p=l.split(',');return{id:p[0],name:p[1],town:p[2]||''}}).filter(function(s){return s.name.toLowerCase().includes(b.query.toLowerCase())}).slice(0,15);
+      var raw=await(await fetch('https://static.sparx-learning.com/sl/spx001/data.txt')).text();var schools=JSON.parse(atob(raw));
+      var results=schools.filter(function(s){return(s.n||'').toLowerCase().includes(b.query.toLowerCase())||(s.t||'').toLowerCase().includes(b.query.toLowerCase())}).map(function(s){return{id:s.i,name:s.n,town:s.t||'',address:s.a||''}}).slice(0,20);
       return json({results:results,count:results.length})}
 
     // ===== SPARX MATHS =====
@@ -139,5 +138,7 @@ addEventListener('fetch',function(event){
     return json({error:'Not found',path:path},404)}catch(e){return json({error:e.message},500)}}
   )(event.request))
 });
+
+
 
 
