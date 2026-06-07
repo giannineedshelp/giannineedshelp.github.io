@@ -626,9 +626,29 @@ function giveSlots() {
 
 // ===== CHANGELOG =====
 function renderChangelog() {
-  var list = $.changelogBody || $.changelogList;
-  if (!list) return;
-  list.innerHTML = '<div class="changelog-list">' +
+  var html = '<div class="changelog-list">' +
+    '<h3>v3.0 (June 2026)</h3><ul>' +
+    '<li>Sparx school search (type school name)</li>' +
+    '<li>AI working out generation (Gemini + Groq + Mistral)</li>' +
+    '<li>Platform loading screens with animated SVGs</li>' +
+    '<li>Hacker theme = v5.2 matrix style with scanlines</li>' +
+    '<li>Show previous homework for Sparx (completed/past due)</li>' +
+    '<li>FCaptcha jitter + anti-tracking bypass</li>' +
+    '<li>Working out toggle in Sparx settings</li>' +
+    '<li>AI provider selector (Auto / Gemini / Groq / Mistral)</li>' +
+    '<li>User agent rotation for anti-detection</li>' +
+    '<li>Improved UI with SVG logos on hub cards</li>' +
+    '</ul>' +
+    '<h3>v2.5 (June 2026)</h3><ul>' +
+    '<li>Unified single-page app with all platforms</li>' +
+    '<li>4 themes: Dark, Hacker, Light, Neon</li>' +
+    '<li>Admin panel with give slots</li>' +
+    '<li>Seneca API proxy endpoints</li>' +
+    '</ul></div>';
+  // Render to overlay body first, then notif pane list
+  if ($.changelogBody) $.changelogBody.innerHTML = html;
+  if ($.changelogList) $.changelogList.innerHTML = html;
+}
     '<h3>v3.0 (June 2026)</h3><ul>' +
     '<li>Sparx school search (type school name)</li>' +
     '<li>AI working out generation (Gemini + Groq + Mistral)</li>' +
@@ -905,6 +925,7 @@ if (document.readyState === 'loading') {
 }
 
 })();
+
 
 
 
