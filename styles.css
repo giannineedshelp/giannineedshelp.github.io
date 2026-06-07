@@ -327,3 +327,47 @@ a{color:var(--primary);text-decoration:none}
 }
 
 
+
+/* ===== STATUS PAGE ===== */
+#statusScreen{align-items:center;justify-content:center;padding:20px}
+.status-container{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);max-width:520px;width:100%;max-height:80vh;overflow-y:auto}
+.status-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border)}
+.status-header h2{margin:0;font-size:17px}
+.status-body{padding:20px}
+.status-card{border:1px solid var(--border);border-radius:var(--radius);margin-bottom:12px;overflow:hidden}
+.status-card-header{padding:10px 14px;background:var(--bg3);font-size:13px;font-weight:600;color:var(--text)}
+.status-card-body{padding:12px 14px}
+.status-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;font-size:13px;border-bottom:1px solid var(--border)}
+.status-row:last-child{border-bottom:none}
+.status-label{color:var(--text2)}
+.status-value{font-family:monospace;color:var(--text)}
+.status-value.text-success{color:var(--success)}
+.status-value.text-error{color:var(--error)}
+.status-value.text-warn{color:var(--warn)}
+.status-ok{border-color:var(--success)}
+.status-warn{border-color:var(--warn)}
+.status-err{border-color:var(--error)}
+.status-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.stat-item{padding:8px 10px;background:var(--bg3);border-radius:var(--radius);font-size:12px}
+.stat-item .stat-label{display:block;font-size:10px;text-transform:uppercase;color:var(--text3);margin-bottom:2px}
+.stat-item .stat-value{font-size:14px;font-weight:600}
+
+/* ===== ANNOUNCEMENTS ===== */
+.announcement-item{padding:10px 12px;margin-bottom:8px;border-radius:var(--radius);font-size:13px;border-left:3px solid}
+.announcement-item.ann-info{background:rgba(0,212,255,0.08);border-left-color:var(--primary)}
+.announcement-item.ann-warning{background:rgba(255,170,0,0.08);border-left-color:var(--warn)}
+.announcement-item.ann-error{background:rgba(255,51,85,0.08);border-left-color:var(--error)}
+.ann-header{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;color:var(--text3)}
+.ann-body{color:var(--text2);line-height:1.5}
+.ann-time{font-size:10px;color:var(--text3);margin-top:4px;font-family:monospace}
+.ann-item{padding:8px 10px;margin-bottom:6px;background:var(--bg3);border-radius:var(--radius);font-size:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ann-type{font-size:9px;padding:2px 6px;border-radius:6px;font-weight:700}
+.ann-type.ann-info{background:rgba(0,212,255,0.2);color:var(--primary)}
+.ann-type.ann-warn{background:rgba(255,170,0,0.2);color:var(--warn)}
+.ann-type.ann-err{background:rgba(255,51,85,0.2);color:var(--error)}
+.ann-time{margin-left:auto;font-size:10px;color:var(--text3)}
+
+/* ===== ADMIN OVERRIDES ===== */
+.btn-small{padding:4px 10px;font-size:11px}
+.ex-course{font-size:10px;color:var(--text3);margin:0 8px}
+

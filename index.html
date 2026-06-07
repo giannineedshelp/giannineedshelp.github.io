@@ -96,8 +96,10 @@
       <div class="notif-tabs">
         <button class="notif-tab active" data-tab="tutorial">Tutorial</button>
         <button class="notif-tab" data-tab="changelog">Changelog</button>
+        <button class="notif-tab" data-tab="announcements">Announcements</button>
       </div>
       <div class="notif-content">
+        <div class="notif-pane" id="announcementsPane"><div class="announcement-list" id="announcementList"><div class="empty-state">No announcements</div></div></div>
         <div class="notif-pane active" id="tutorialPane">
           <div class="tutorial-guide">
             <h3>Quick Start Guide</h3>
@@ -189,6 +191,7 @@
   <div class="sidebar-links">
     <a href="#" class="sidebar-link active" data-screen="hubScreen"><span class="sl-icon">&#9679;</span> Hub</a>
     <a href="#" class="sidebar-link" data-screen="settingsScreen"><span class="sl-icon">&#9881;</span> Settings</a>
+    <a href="#" class="sidebar-link" data-screen="statusScreen"><span class="sl-icon">&#9888;</span> Status</a>
     <a href="#" class="sidebar-link" data-screen="donateScreen"><span class="sl-icon">&#9829;</span> Donate</a>
     <a href="#" class="sidebar-link" data-screen="adminScreen"><span class="sl-icon">&#9762;</span> Admin</a>
   </div>
@@ -369,6 +372,22 @@
   </div>
 </div>
 
+<!-- ===== STATUS SCREEN ===== -->
+<div id="statusScreen" class="screen">
+  <div class="status-container">
+    <div class="status-header">
+      <h2>System Status</h2>
+      <div>
+        <button id="statusRefreshBtn" class="btn-icon" onclick="loadStatusPage()">&circlearrowleft;</button>
+        <button class="btn-icon" onclick="showScreen('hubScreen')">&times;</button>
+      </div>
+    </div>
+    <div class="status-body" id="statusContent">
+      <div class="empty-state">Press Refresh to check status</div>
+    </div>
+  </div>
+</div>
+
 <!-- ===== DONATE SCREEN ===== -->
 <div id="donateScreen" class="screen">
   <div class="donate-container">
@@ -392,22 +411,110 @@
       <button id="adminBackBtn" class="btn-icon">&times;</button>
     </div>
     <div class="admin-body">
-      <div class="admin-section">
-        <h3>Give Slots</h3>
-        <div class="form-group"><label>Username</label><input type="text" id="adminUsername" placeholder="Target username"></div>
-        <div class="form-group"><label>Amount</label><input type="number" id="adminAmount" placeholder="Slots to add" min="1" value="1"></div>
-        <div class="form-group"><label>Admin Key</label><input type="password" id="adminKey" placeholder="Admin secret key"></div>
-        <button id="adminGiveSlotsBtn" class="btn btn-primary">Give Slots</button>
-        <div id="adminResult" class="admin-result"></div>
+
+      <!-- Admin Auth -->
+      <div id="adminAuthSection" class="admin-section" style="text-align:center">
+        <h3>Authenticate</h3>
+        <input type="password" id="adminPassword" placeholder="Enter admin password" style="margin-bottom:.6rem;width:100%;max-width:300px">
+        <button id="adminLoginBtn" class="btn btn-primary" style="width:100%;max-width:300px">Login</button>
+        <div id="adminAuthError" class="admin-result" style="color:var(--danger);margin-top:.4rem;display:none"></div>
       </div>
-      <div class="admin-section">
-        <h3>Platform Status</h3>
-        <div id="adminPlatformStatus">
-          <div class="platform-status-item"><span class="ps-name">LanguageNut API</span><span class="ps-indicator checking">Checking...</span></div>
-          <div class="platform-status-item"><span class="ps-name">Seneca API</span><span class="ps-indicator checking">Checking...</span></div>
-          <div class="platform-status-item"><span class="ps-name">Sparx API</span><span class="ps-indicator checking">Checking...</span></div>
-          <div class="platform-status-item"><span class="ps-name">Worker</span><span class="ps-indicator checking">Checking...</span></div>
+
+      <!-- Admin Content (hidden until auth) -->
+      <div id="adminContent" style="display:none">
+
+        <!-- Give Slots -->
+        <div class="admin-section">
+          <h3>Give Slots</h3>
+          <div class="form-group"><label>Username</label><input type="text" id="adminUsername" placeholder="Target username"></div>
+          <div class="form-group"><label>Amount</label><input type="number" id="adminAmount" placeholder="Slots to add" min="1" value="1"></div>
+          <div class="form-group"><label>Admin Key</label><input type="password" id="adminKey" placeholder="Admin secret key"></div>
+          <button id="adminGiveSlotsBtn" class="btn btn-primary">Give Slots</button>
+          <div id="adminResult" class="admin-result"></div>
         </div>
+
+        <!-- Platform Status Controls -->
+        <div class="admin-section">
+          <h3>Platform Status
+            <button id="adminCheckPlatformsBtn" class="btn btn-small" style="float:right">Check Now</button>
+          </h3>
+          <div id="adminPlatformStatus">
+            <div class="platform-status-item">
+              <span class="ps-name">LanguageNut</span>
+              <span class="ps-indicator checking">Checking...</span>
+            </div>
+            <div class="platform-status-item">
+              <span class="ps-name">Seneca</span>
+              <span class="ps-indicator checking">Checking...</span>
+            </div>
+            <div class="platform-status-item">
+              <span class="ps-name">Sparx</span>
+              <span class="ps-indicator checking">Checking...</span>
+            </div>
+            <div class="platform-status-item">
+              <span class="ps-name">Worker</span>
+              <span class="ps-indicator checking">Checking...</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Announcements -->
+        <div class="admin-section">
+          <h3>Send Announcement</h3>
+          <div class="form-group">
+            <textarea id="adminAnnouncementMsg" rows="3" placeholder="Write announcement..." style="width:100%"></textarea>
+          </div>
+          <div class="form-group" style="display:flex;gap:8px;align-items:center">
+            <label>Type:</label>
+            <select id="adminAnnouncementType">
+              <option value="info">Info</option>
+              <option value="warning">Warning</option>
+              <option value="error">Error</option>
+            </select>
+            <button id="adminAnnouncementBtn" class="btn btn-primary">Send</button>
+          </div>
+          <div id="adminAnnouncementResult" class="admin-result"></div>
+        </div>
+
+        <!-- Blacklist -->
+        <div class="admin-section">
+          <h3>Blacklist Management</h3>
+          <div class="form-group" style="display:flex;gap:8px;align-items:center">
+            <input type="text" id="adminBlacklistUser" placeholder="Username">
+            <select id="adminBlacklistAction">
+              <option value="add">Add</option>
+              <option value="remove">Remove</option>
+              <option value="list">List All</option>
+            </select>
+            <button id="adminBlacklistBtn" class="btn btn-primary btn-small">Go</button>
+          </div>
+          <div id="adminBlacklistResult" class="admin-result"></div>
+        </div>
+
+        <!-- Platform Status Setter -->
+        <div class="admin-section">
+          <h3>Set Platform Status</h3>
+          <div class="form-group" style="display:flex;gap:8px;align-items:center">
+            <select id="adminStatusPlatform">
+              <option value="languagenut">LanguageNut</option>
+              <option value="seneca">Seneca</option>
+              <option value="sparx">Sparx</option>
+            </select>
+            <select id="adminStatusValue">
+              <option value="online">Online</option>
+              <option value="maintenance">Maintenance</option>
+              <option value="offline">Offline</option>
+            </select>
+            <button id="adminPlatStatusBtn" class="btn btn-primary btn-small">Set</button>
+          </div>
+          <div id="adminStatusResult" class="admin-result"></div>
+        </div>
+
+        <!-- Worker -->
+        <div class="admin-section" style="text-align:center">
+          <button id="adminLogoutBtn" class="btn btn-danger" style="width:100%">Logout</button>
+        </div>
+
       </div>
     </div>
   </div>
@@ -416,6 +523,13 @@
 <script src="script.js"></script>
 </body>
 </html>
+
+
+
+
+
+
+
 
 
 

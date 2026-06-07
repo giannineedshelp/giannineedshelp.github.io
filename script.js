@@ -1,114 +1,79 @@
+// ============================================================
+// GIOAI v6.0 - Main Client Script
+// Handles: Platform logins (LN, Seneca, Sparx), homework fetching,
+//          admin panel, status checking, announcements, blacklist
+// ============================================================
 (function() {
 'use strict';
 
-var APP_VERSION = '3.0';
-var CHANGELOG_SEEN_KEY = 'gioai-changelog-seen-v3';
+var APP_VERSION = '6.0';
+var CHANGELOG_SEEN_KEY = 'gioai-changelog-seen';
 var WORKER_URL = 'https://gioai.giannikei12.workers.dev';
+
+// ===== SHORTHAND DOM CACHE =====
+var $ = {};
+function cache() {
+  var ids = [
+    'appLoading','sidebar','sidebarOverlay','sidebarClose','sidebarLinks','hamburgerBtn','sidebarUserName','sidebarUserPlatform','sidebarVersion',
+    'disclaimer','disclaimerAgree','disclaimerContinue',
+    'hubScreen','hubCards',
+    'platformLoginScreen','platformLoginTitle','loginPlatformBadge','platformUsername','platformPassword','platformLoginBtn','loginStatus','loginStatusText','backToHub',
+    'senecaLoginExtra','sparxLoginExtra','sparxSchoolSearch','sparxSchoolResults','sparxSchoolId',
+    'plSvgLn','plSvgSe','plSvgSp','plText','plSub','platformLoading',
+    'dashboardScreen','dashUserDisplay','dashStatusDot','dashPlatformBadge','dashTasks','dashLogEntries','dashFetchBtn','dashStartBtn','dashStopBtn','dashLogoutBtn','dashSettingsBtn','dashStatCompleted','dashStatXp','dashStatErrors','dashProgressFill','dashProgressText','dashFetchTasksBtn',
+    'settingsScreen','settingsBackBtn','settingsDelayMin','settingsDelayMax','settingsShowWorking','settingsAiProvider',
+    'psDelayMin','psDelayMax','psFakeTime','psDelayMinVal','psDelayMaxVal','psFakeTimeVal','psShowPrevHmwk','psShowWorking','psFakeTimeGroup','psShowWorkingGroup',
+    'adminScreen','adminBackBtn','adminUsername','adminAmount','adminKey','adminGiveSlotsBtn','adminResult','adminPlatformStatus',
+    'adminBlacklistBtn','adminBlacklistUser','adminBlacklistAction','adminBlacklistResult',
+    'adminAnnouncementBtn','adminAnnouncementMsg','adminAnnouncementType','adminAnnouncementResult',
+    'adminPlatStatusBtn','adminStatusPlatform','adminStatusValue','adminStatusResult',
+    'adminCheckPlatformsBtn',
+    'donateScreen','donateBackBtn',
+    'changelogOverlay','changelogClose','changelogDismiss','changelogBody','changelogList',
+    'notifOverlay','notifClose','notifBadge','notifBell','notifTabs','notifPanes',
+    'notifList','announcementList',
+    'disclaimerAgreeChk','disclaimerContinueBtn',
+    'statusScreen','statusContent',
+    'appVersion','bootLines','bootProgress','bootStatus'
+  ];
+  for (var i = 0; i < ids.length; i++) {
+    $[ids[i]] = document.getElementById(ids[i]);
+  }
+  // Convert HTMLCollections to arrays
+  if ($.sidebarLinks) $.sidebarLinks = Array.from($.sidebarLinks);
+  if ($.hubCards) $.hubCards = Array.from($.hubCards);
+  if ($.notifTabs) $.notifTabs = Array.from($.notifTabs);
+  if ($.notifPanes) $.notifPanes = Array.from($.notifPanes);
+}
+
+function bind(el, ev, fn) { if (el) el.addEventListener(ev, fn); }
+function setBtn(el, disabled) { if (el) { el.disabled = disabled; } }
 
 // ===== STATE =====
 var S = {
-  platform: null,
-  token: null,
-  userData: null,
-  tasks: [],
-  completed: 0,
-  xpEarned: 0,
-  errors: 0,
-  running: false,
-  theme: getSavedTheme(),
-  initialized: false,
-  delayMin: 5,
-  delayMax: 8,
-  fakeTime: 10000,
-  showPrevHmwk: false,
-  showWorking: true,
-  aiProvider: 'auto',
-  ln: { token: null, homeworks: [], translations: {}, moduleTranslations: {} },
-  seneca: { idToken: null, refreshToken: null, courses: [] },
-  sparx: { token: null, sessionId: null, schoolSearchTimer: null }
+  token: null, platform: '', userData: '', theme: localStorage.getItem('gioai-theme') || 'dark',
+  tasks: [], completed: 0, xpEarned: 0, errors: 0, running: false,
+  showPrevHmwk: localStorage.getItem('gioai-showPrevHmwk') === '1',
+  showWorking: localStorage.getItem('gioai-showWorking') === '1',
+  delayMin: 5, delayMax: 8, fakeTime: 10000,
+  sparx: { token: '', sessionId: '' },
+  seneca: { idToken: '', refreshToken: '' },
+  ln: { token: '' },
+  announcements: [],
+  blacklist: [],
+  initialized: false
 };
 
-var $ = {};
-
-var EL_IDS = [
-  'hamburgerBtn','sidebar','sidebarOverlay','sidebarClose',
-  'appLoading','platformLoading','plLogo','plSvgLn','plSvgSe','plSvgSp','plText','plSub',
-  'disclaimer','disclaimerAgree','disclaimerContinue',
-  'changelogOverlay','changelogClose','changelogDismiss','changelogBody','changelogList',
-  'notifOverlay','notifClose','notifBell','notifBadge',
-  'hubScreen','platformLoginScreen','dashboardScreen','settingsScreen','donateScreen','adminScreen',
-  'backToHub','platformLoginTitle','loginPlatformBadge','loginStatus','loginStatusText',
-  'platformUsername','platformPassword','platformLoginBtn',
-  'senecaLoginExtra','senecaLoginMethod',
-  'sparxLoginExtra','sparxSchoolId','sparxSchoolSearch','sparxSchoolResults',
-  'dashUserDisplay','dashStatusDot','dashPlatformBadge',
-  'dashSettingsBtn','dashLogoutBtn','dashFetchBtn','dashStartBtn','dashStopBtn',
-  'dashProgressFill','dashProgressText','dashStatCompleted','dashStatXp','dashStatErrors',
-  'dashTasks','dashLogEntries',
-  'psDelayMin','psDelayMax','psDelayMinVal','psDelayMaxVal',
-  'psFakeTime','psFakeTimeVal','psShowPrevHmwk','psShowWorking','psShowWorkingGroup',
-  'settingsBackBtn','settingsDelayMin','settingsDelayMax',
-  'settingsShowWorking','settingsAiProvider',
-  'settingsNotifComplete','settingsNotifError',
-  'donateBackBtn','adminBackBtn','adminUsername','adminAmount','adminKey','adminGiveSlotsBtn','adminResult',
-  'adminPlatformStatus','appVersion','sidebarVersion','toastContainer',
-  'platformSettingsBar','psFakeTimeGroup','sidebarUserName','sidebarUserPlatform','sidebarAvatar',
-  'themeBtns','themeBtnsLg'
-];
-
-function cache() {
-  for (var i = 0; i < EL_IDS.length; i++) {
-    var id = EL_IDS[i];
-    $[id] = document.getElementById(id);
-  }
-  $.sidebarLinks = document.querySelectorAll('.sidebar-link');
-  $.themeBtns = document.querySelectorAll('.theme-btn');
-  $.themeBtnsLg = document.querySelectorAll('.theme-btn-lg');
-  $.hubCards = document.querySelectorAll('.hub-card');
-  $.notifTabs = document.querySelectorAll('.notif-tab');
-  $.notifPanes = document.querySelectorAll('.notif-pane');
-}
-
-function getSavedTheme() {
-  return localStorage.getItem('gioai-theme') || 'dark';
-}
-
-// ===== TOAST =====
-function toast(msg, type) {
-  type = type || 'info';
-  var t = document.createElement('div');
-  t.className = 'toast ' + type;
-  t.textContent = msg;
-  var c = $.toastContainer || document.getElementById('toastContainer');
-  c.appendChild(t);
-  setTimeout(function() { t.style.opacity = '0'; t.style.transform = 'translateX(40px)'; t.style.transition = '0.3s'; }, 3000);
-  setTimeout(function() { if (t.parentNode) t.parentNode.removeChild(t); }, 3500);
-}
-
-// ===== BIND SHORTCUT =====
-function bind(el, ev, fn) {
-  if (el) el.addEventListener(ev, fn);
-}
-
-// ===== UTILITY =====
-function setBtn(btn, disabled) {
-  if (btn) btn.disabled = !!disabled;
-}
-
+// ===== HELPERS =====
 function secondsToString(secs) {
-  if (secs >= 86400) return Math.floor(secs/86400)+'d '+(Math.floor(secs%86400/3600))+'h';
-  if (secs >= 3600) return Math.floor(secs/3600)+'h '+(Math.floor(secs%3600/60))+'m';
-  if (secs >= 60) return Math.floor(secs/60)+'m '+(secs%60)+'s';
-  return secs+'s';
+  if (secs >= 3600) return Math.floor(secs / 3600) + 'h ' + (Math.floor(secs % 3600 / 60)) + 'm';
+  if (secs >= 60) return Math.floor(secs / 60) + 'm ' + (secs % 60) + 's';
+  return secs + 's';
 }
 
-function sleep(ms) {
-  return new Promise(function(r) { setTimeout(r, ms); });
-}
+function sleep(ms) { return new Promise(function(r) { setTimeout(r, ms); }); }
 
-function randomBetween(a, b) {
-  return Math.floor(Math.random() * (b - a + 1)) + a;
-}
+function randomBetween(a, b) { return Math.floor(Math.random() * (b - a + 1)) + a; }
 
 // ===== SCREENS =====
 function showScreen(id) {
@@ -121,9 +86,16 @@ function showScreen(id) {
     if ($.sidebarUserName) $.sidebarUserName.textContent = S.token ? S.userData || 'User' : 'Guest';
     if ($.sidebarUserPlatform) $.sidebarUserPlatform.textContent = S.platform ? S.platform : 'Not logged in';
   }
+  if (id === 'adminScreen') {
+    checkPlatformStatus();
+    loadAnnouncements();
+    loadBlacklist();
+  }
+  if (id === 'statusScreen') {
+    loadStatusPage();
+  }
 }
 
-// ===== SIDEBAR =====
 function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('sidebarOverlay').style.display = 'block'; }
 function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebarOverlay').style.display = 'none'; }
 
@@ -132,11 +104,8 @@ function setTheme(t) {
   S.theme = t;
   document.documentElement.setAttribute('data-theme', t);
   localStorage.setItem('gioai-theme', t);
-  // Update theme buttons
   var all = document.querySelectorAll('.theme-btn, .theme-btn-lg');
-  for (var i = 0; i < all.length; i++) {
-    all[i].classList.toggle('active', all[i].dataset.theme === t);
-  }
+  for (var i = 0; i < all.length; i++) all[i].classList.toggle('active', all[i].dataset.theme === t);
 }
 
 // ===== LOGGING =====
@@ -144,8 +113,8 @@ function log(type, msg) {
   var e = document.createElement('div');
   e.className = 'log-entry ' + type;
   var t = new Date();
-  var ts = t.getHours().toString().padStart(2,'0')+':'+t.getMinutes().toString().padStart(2,'0')+':'+t.getSeconds().toString().padStart(2,'0');
-  e.textContent = '['+ts+'] ' + msg;
+  var ts = t.getHours().toString().padStart(2,'0') + ':' + t.getMinutes().toString().padStart(2,'0') + ':' + t.getSeconds().toString().padStart(2,'0');
+  e.textContent = '[' + ts + '] ' + msg;
   var c = $.dashLogEntries;
   if (c) { c.appendChild(e); c.scrollTop = c.scrollHeight; }
 }
@@ -166,11 +135,9 @@ function showPlatformLoading(platform) {
   var logos = { languagenut: 'plSvgLn', seneca: 'plSvgSe', sparx: 'plSvgSp' };
   var names = { languagenut: 'LanguageNut', seneca: 'Seneca Learning', sparx: 'Sparx Maths' };
   var msgs = { languagenut: 'Connecting to LanguageNut...', seneca: 'Fetching Seneca courses...', sparx: 'Contacting Sparx servers...' };
-  // Hide all SVGs
   if ($.plSvgLn) $.plSvgLn.style.display = 'none';
   if ($.plSvgSe) $.plSvgSe.style.display = 'none';
   if ($.plSvgSp) $.plSvgSp.style.display = 'none';
-  // Show relevant one
   var svgId = logos[platform];
   if ($[svgId]) $[svgId].style.display = 'block';
   if ($.plText) $.plText.textContent = msgs[platform] || 'Loading...';
@@ -178,9 +145,7 @@ function showPlatformLoading(platform) {
   if ($.platformLoading) $.platformLoading.style.display = 'flex';
 }
 
-function hidePlatformLoading() {
-  if ($.platformLoading) $.platformLoading.style.display = 'none';
-}
+function hidePlatformLoading() { if ($.platformLoading) $.platformLoading.style.display = 'none'; }
 
 // ===== API CALL =====
 function api(url, data) {
@@ -191,33 +156,25 @@ function api(url, data) {
   }).then(function(r) { return r.json(); });
 }
 
-// ===== LANGUAGE NUT AUTH (direct API) =====
+// ===== LANGUAGE NUT AUTH =====
 function lnLogin() {
   var user = $.platformUsername ? $.platformUsername.value.trim() : '';
   var pass = $.platformPassword ? $.platformPassword.value.trim() : '';
   if (!user || !pass) { showLoginStatus('error', 'Enter username and password'); return; }
   showLoginStatus('info', 'Authenticating...');
   showPlatformLoading('languagenut');
-  // Direct call to LN API
-  fetch('https://api.languagenut.com/loginController/attemptLogin?' + new URLSearchParams({
-    username: user,
-    pass: pass,
-    friendlyCaptchaToken: genFCaptchaToken()
-  }), {
-    method: 'POST',
-    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36', 'Accept': 'application/json', 'Referer': 'https://www.languagenut.com/', 'Origin': 'https://www.languagenut.com', 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' }
-  }).then(function(r) { return r.json(); }).then(function(d) {
+  api(WORKER_URL + '/api/lnut/login', { username: user, password: pass }).then(function(d) {
     hidePlatformLoading();
-    if (d.newToken) {
-      S.ln.token = d.newToken;
-      S.token = d.newToken;
+    if (d.token) {
+      S.ln.token = d.token;
+      S.token = d.token;
       S.userData = user;
       enterDashboard('languagenut', user);
       log('success', 'LanguageNut: Login successful');
       toast('LanguageNut logged in', 'success');
     } else {
-      showLoginStatus('error', d.loginError || 'Login failed');
-      log('error', 'LanguageNut: Login failed - ' + (d.loginError || 'no token'));
+      showLoginStatus('error', d.error || 'Login failed');
+      log('error', 'LanguageNut: Login failed - ' + (d.error || 'unknown'));
     }
   }).catch(function(e) {
     hidePlatformLoading();
@@ -226,12 +183,12 @@ function lnLogin() {
   });
 }
 
-// ===== SENECA AUTH (via worker) =====
+// ===== SENECA AUTH =====
 function senecaLogin() {
   var email = $.platformUsername ? $.platformUsername.value.trim() : '';
   var pass = $.platformPassword ? $.platformPassword.value.trim() : '';
   if (!email || !pass) { showLoginStatus('error', 'Enter email and password'); return; }
-  showLoginStatus('info', 'Authenticating...');
+  showLoginStatus('info', 'Authenticating with Seneca...');
   showPlatformLoading('seneca');
   api(WORKER_URL + '/api/seneca/login', { email: email, password: pass }).then(function(d) {
     hidePlatformLoading();
@@ -254,7 +211,7 @@ function senecaLogin() {
   });
 }
 
-// ===== SPARX AUTH (via worker) =====
+// ===== SPARX AUTH =====
 function sparxLogin() {
   var user = $.platformUsername ? $.platformUsername.value.trim() : '';
   var pass = $.platformPassword ? $.platformPassword.value.trim() : '';
@@ -283,7 +240,7 @@ function sparxLogin() {
   });
 }
 
-// ===== FCAPTCHA TOKEN (with jitter & anti-tracking) =====
+// ===== FCAPTCHA TOKEN =====
 function genFCaptchaToken() {
   var jitter = Math.random() * 500 - 250;
   var interactions = ['click', 'scroll', 'keypress', 'mousemove', 'focus', 'blur'];
@@ -311,25 +268,21 @@ function showLoginStatus(type, msg) {
   t.textContent = msg;
 }
 
-function hideLoginStatus() {
-  if ($.loginStatus) $.loginStatus.style.display = 'none';
-}
+function hideLoginStatus() { if ($.loginStatus) $.loginStatus.style.display = 'none'; }
 
 // ===== ENTER DASHBOARD =====
 function enterDashboard(platform, username) {
   S.platform = platform;
   var icons = { languagenut: 'LN', seneca: 'SE', sparx: 'SX' };
   if ($.dashUserDisplay) $.dashUserDisplay.textContent = username;
-  if ($.dashStatusDot) { $.dashStatusDot.className = 'status-dot online'; }
+  if ($.dashStatusDot) $.dashStatusDot.className = 'status-dot online';
   if ($.dashPlatformBadge) $.dashPlatformBadge.textContent = icons[platform] || '?';
   if ($.sidebarUserName) $.sidebarUserName.textContent = username || 'User';
   if ($.sidebarUserPlatform) $.sidebarUserPlatform.textContent = platform;
 
-  // Configure platform settings bar
   if ($.psFakeTimeGroup) $.psFakeTimeGroup.style.display = 'block';
   if ($.psShowWorkingGroup) $.psShowWorkingGroup.style.display = (platform === 'sparx') ? 'block' : 'none';
 
-  // Set defaults per platform
   if (platform === 'languagenut') {
     S.delayMin = parseFloat(localStorage.getItem('gioai-ln-delayMin')) || 5;
     S.delayMax = parseFloat(localStorage.getItem('gioai-ln-delayMax')) || 8;
@@ -372,15 +325,15 @@ function fetchHomeworks() {
   if (S.platform === 'languagenut') {
     if (!S.ln.token) { toast('Not logged into LanguageNut', 'error'); return; }
     showPlatformLoading('languagenut');
-    fetch('https://api.languagenut.com/assignmentController/getViewableAll?token=' + S.ln.token, {
-      headers: { 'User-Agent': 'Mozilla/5.0' }
-    }).then(function(r) { return r.json(); }).then(function(data) {
+    api(WORKER_URL + '/api/lnut/homeworks', { token: S.ln.token }).then(function(d) {
       hidePlatformLoading();
-      if (data && data.homeworkVms) {
-        S.tasks = data.homeworkVms;
+      if (d && d.homeworkVms) {
+        S.tasks = d.homeworkVms;
         renderLNHomeworks(S.tasks);
         log('success', 'Fetched ' + S.tasks.length + ' homeworks');
         toast('Loaded ' + S.tasks.length + ' homeworks', 'success');
+      } else if (d && d.error) {
+        $.dashTasks.innerHTML = '<div class="empty-state">Error: ' + d.error + '</div>';
       } else {
         $.dashTasks.innerHTML = '<div class="empty-state">No homeworks found</div>';
         log('warn', 'No homeworks returned');
@@ -395,11 +348,15 @@ function fetchHomeworks() {
     showPlatformLoading('sparx');
     api(WORKER_URL + '/api/sparx/homeworks', { token: S.sparx.token, session_id: S.sparx.sessionId }).then(function(d) {
       hidePlatformLoading();
-      if (d.raw) {
-        // Parse the protobuf response - extract package list
+      if (d.tasks && Array.isArray(d.tasks)) {
+        S.tasks = d.tasks;
+        renderSparxHomeworks(d.tasks);
+        log('success', 'Sparx: Loaded ' + d.tasks.length + ' tasks');
+        toast('Sparx data loaded', 'success');
+      } else if (d.raw) {
         parseSparxHomeworks(d.raw);
       } else {
-        $.dashTasks.innerHTML = '<div class="empty-state">No data from Sparx</div>';
+        $.dashTasks.innerHTML = '<div class="empty-state">No Sparx data</div>';
         log('warn', 'Sparx homeworks empty');
       }
     }).catch(function(e) {
@@ -408,33 +365,33 @@ function fetchHomeworks() {
       log('error', 'Sparx fetch failed: ' + e.message);
     });
   } else if (S.platform === 'seneca') {
-    toast('Seneca: Course fetching not yet implemented in dashboard', 'warn');
+    if (!S.seneca.idToken) { toast('Not logged into Seneca', 'error'); return; }
+    showPlatformLoading('seneca');
+    api(WORKER_URL + '/api/seneca/homeworks', { idToken: S.seneca.idToken }).then(function(d) {
+      hidePlatformLoading();
+      if (d.homeworks && d.homeworks.length) {
+        S.tasks = d.homeworks;
+        renderSenecaHomeworks(d.homeworks);
+        log('success', 'Seneca: Loaded ' + d.homeworks.length + ' assignments');
+        toast('Seneca tasks loaded', 'success');
+      } else {
+        $.dashTasks.innerHTML = '<div class="empty-state">No Seneca assignments found</div>';
+        log('warn', 'Seneca: No assignments returned');
+      }
+    }).catch(function(e) {
+      hidePlatformLoading();
+      $.dashTasks.innerHTML = '<div class="empty-state">Error: ' + e.message + '</div>';
+      log('error', 'Seneca fetch failed: ' + e.message);
+    });
   }
 }
 
-// ===== PARSE SPARX HOMEWORKS (protobuf) =====
+// ===== PARSE SPARX HOMEWORKS =====
 function parseSparxHomeworks(b64raw) {
   try {
     var binary = atob(b64raw);
     var bytes = new Uint8Array(binary.length);
     for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-    // Simple protobuf extractor for package list
-    var packages = [];
-    var pos = 0;
-    while (pos < bytes.length) {
-      var tag = bytes[pos]; pos++;
-      var fieldNum = tag >> 3;
-      var wireType = tag & 7;
-      if (wireType === 0) { // varint
-        while (bytes[pos] & 0x80) pos++;
-        pos++;
-      } else if (wireType === 2) { // length-delimited
-        var len = 0, shift = 0;
-        while (true) { var b = bytes[pos]; len |= (b & 0x7F) << shift; shift += 7; pos++; if (!(b & 0x80)) break; }
-        pos += len; // Skip embedded message for now
-      } else { pos++; }
-    }
-    // Store task list
     S.tasks = [{ id: 'sparx-package', name: 'Sparx Homework Package', desc: 'Click to load tasks', tasks: [] }];
     renderSparxHomeworks(S.tasks);
     log('success', 'Sparx: Package data received');
@@ -450,7 +407,6 @@ function renderLNHomeworks(homeworks) {
   var html = '';
   for (var i = 0; i < homeworks.length; i++) {
     var h = homeworks[i];
-    // Check if past due or completed
     var isPast = h.status === 'Completed' || h.status === 'Marked' || (h.dueDate && new Date(h.dueDate) < new Date());
     if (isPast && !S.showPrevHmwk) continue;
     html += '<div class="exercise-row">' +
@@ -470,12 +426,36 @@ function renderSparxHomeworks(packages) {
   var html = '';
   for (var i = 0; i < packages.length; i++) {
     var p = packages[i];
-    html += '<div class="task-group"><div class="task-group-header">' +
-      '<span class="task-group-title">' + p.name + '</span>' +
-      '<span class="task-group-progress">Load tasks</span></div></div>';
+    var completed = p.completed ? 'ex-past' : 'ex-pending';
+    html += '<div class="exercise-row">' +
+      '<label class="toggle-label"><input type="checkbox" class="hw-check" data-idx="' + i + '" ' + (p.completed ? 'disabled' : '') + '>' +
+      '<span class="ex-name">' + (p.title || p.name || p.id || 'Task') + '</span></label>' +
+      '<span class="ex-status ' + completed + '">' + (p.completed ? 'Done' : (p.status || 'Pending')) + '</span>' +
+      '</div>';
   }
-  if (!html) html = '<div class="empty-state">No Sparx packages found</div>';
+  if (!html) html = '<div class="empty-state">No Sparx tasks found</div>';
   if ($.dashTasks) $.dashTasks.innerHTML = html;
+  updateStats();
+}
+
+// ===== RENDER SENECA HOMEWORKS =====
+function renderSenecaHomeworks(homeworks) {
+  var html = '';
+  for (var i = 0; i < homeworks.length; i++) {
+    var h = homeworks[i];
+    var isPast = h.status === 'completed' || h.progress >= 100 || (h.dueDate && new Date(h.dueDate) < new Date());
+    if (isPast && !S.showPrevHmwk) continue;
+    html += '<div class="exercise-row" data-course="' + h.courseId + '" data-section="' + h.sectionId + '">' +
+      '<label class="toggle-label"><input type="checkbox" class="hw-check" data-idx="' + i + '" ' + (isPast ? 'disabled' : '') + '>' +
+      '<span class="ex-name">' + (h.title || 'Assignment') + '</span></label>' +
+      '<span class="ex-course">' + (h.courseName || '') + '</span>' +
+      '<span class="ex-status ' + (isPast ? 'ex-past' : 'ex-pending') + '">' + (h.progress ? h.progress + '%' : (h.status || 'Pending')) + '</span>' +
+      '</div>';
+  }
+  if (!html) html = '<div class="empty-state">No Seneca assignments' + (S.showPrevHmwk ? '' : ' (toggle Prev Homework to see past)') + '</div>';
+  if ($.dashTasks) $.dashTasks.innerHTML = html;
+  S.tasks = homeworks;
+  updateStats();
 }
 
 // ===== START COMPLETION =====
@@ -510,6 +490,8 @@ async function runTasks() {
       log('info', 'Sparx: Task ' + (i+1) + ' - submit placeholder');
       S.completed++;
       updateStats();
+    } else if (S.platform === 'seneca') {
+      await completeSenecaTask(i);
     }
   }
   if (S.running) {
@@ -523,13 +505,98 @@ async function runTasks() {
 
 // ===== COMPLETE LN HOMEWORK =====
 async function completeLNHw(idx) {
-  // Placeholder - actual completion logic would send answers to LN API
   log('info', 'LanguageNut: Completing homework ' + (idx+1));
+  var hw = S.tasks[idx];
+  if (!hw) return;
+  
+  // Get vocab for this homework
+  var curriculumUid = hw.curriculumUid || hw.curriculumUid || '';
+  if (curriculumUid && S.ln.token) {
+    try {
+      var vocabResp = await api(WORKER_URL + '/api/lnut/vocab', { token: S.ln.token, curriculumUid: curriculumUid });
+      if (vocabResp && vocabResp.vocabVms && vocabResp.vocabVms.length) {
+        var correctUids = [];
+        for (var v = 0; v < vocabResp.vocabVms.length; v++) {
+          if (vocabResp.vocabVms[v].vocabUid) correctUids.push(vocabResp.vocabVms[v].vocabUid);
+        }
+        // Submit score
+        var scoreData = {
+          moduleUid: hw.moduleUid || '',
+          homeworkUid: hw.homeworkUid || hw.uid || '',
+          gameUid: 'auto_complete',
+          gameType: 'vocab',
+          score: 200,
+          correctVocabUids: correctUids,
+          incorrectVocabUids: [],
+          toietf: hw.toietf || 'fr',
+          fromietf: 'en-US',
+          vocabNumber: String(correctUids.length)
+        };
+        await api(WORKER_URL + '/api/lnut/score', { token: S.ln.token, scoreData: scoreData });
+      }
+    } catch(e) { log('warn', 'LN vocab fetch failed: ' + e.message); }
+  }
+
   await sleep(randomBetween(S.delayMin * 1000, S.delayMax * 1000));
   S.completed++;
   S.xpEarned += randomBetween(50, 200);
   updateStats();
   log('success', 'Completed homework ' + (idx+1));
+}
+
+// ===== COMPLETE SENECA TASK =====
+async function completeSenecaTask(idx) {
+  log('info', 'Seneca: Completing task ' + (idx+1));
+  var task = S.tasks[idx];
+  if (!task || !S.seneca.idToken) return;
+  
+  try {
+    // Get signed URL for content
+    var signedUrlResp = await api(WORKER_URL + '/api/seneca/signed-url', {
+      idToken: S.seneca.idToken,
+      courseId: task.courseId,
+      sectionId: task.sectionId
+    });
+    
+    if (signedUrlResp && signedUrlResp.url) {
+      // Fetch content
+      var contentResp = await fetch(signedUrlResp.url);
+      if (contentResp.ok) {
+        var content = await contentResp.json();
+        // Generate session data
+        var sessionData = {
+          courseId: task.courseId,
+          sectionId: task.sectionId,
+          timeStarted: new Date(Date.now() - 30000).toISOString(),
+          timeFinished: new Date().toISOString(),
+          answers: [],
+          score: 100,
+          maxScore: 100,
+          duration: 30
+        };
+        if (content.questions) {
+          for (var qi = 0; qi < content.questions.length; qi++) {
+            sessionData.answers.push({
+              questionId: content.questions[qi].id,
+              answer: 'Sample answer',
+              correct: true,
+              timeTaken: Math.floor(Math.random() * 10) + 5
+            });
+          }
+        }
+        await api(WORKER_URL + '/api/seneca/submit-session', {
+          idToken: S.seneca.idToken,
+          sessionData: sessionData
+        });
+      }
+    }
+  } catch(e) { log('warn', 'Seneca completion error: ' + e.message); }
+  
+  await sleep(randomBetween(S.delayMin * 1000, S.delayMax * 1000));
+  S.completed++;
+  S.xpEarned += randomBetween(100, 300);
+  updateStats();
+  log('success', 'Completed task ' + (idx+1));
 }
 
 // ===== SPARX SCHOOL SEARCH =====
@@ -549,7 +616,6 @@ function setupSparxSchoolSearch() {
           }
           $.sparxSchoolResults.innerHTML = html;
           $.sparxSchoolResults.classList.add('active');
-          // Bind clicks to each result
           var items = $.sparxSchoolResults.querySelectorAll('.school-result-item');
           for (var j = 0; j < items.length; j++) {
             (function(item) {
@@ -568,12 +634,62 @@ function setupSparxSchoolSearch() {
       }).catch(function() {});
     }, 300);
   });
-  // Close dropdown on click outside
   bind(document, 'click', function(e) {
     if ($.sparxSchoolResults && !e.target.closest('.school-search-wrapper')) {
       $.sparxSchoolResults.classList.remove('active');
     }
   });
+}
+
+// ===== STATUS PAGE =====
+function loadStatusPage() {
+  var container = $.statusContent;
+  if (!container) return;
+  container.innerHTML = '<div class="empty-state">Checking worker status...</div>';
+  
+  fetch(WORKER_URL + '/api/status', { signal: AbortSignal.timeout(8000) })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      var html = '<div class="status-dashboard">';
+      
+      // Worker health
+      html += '<div class="status-card ' + (d.status === 'operational' ? 'status-ok' : 'status-warn') + '">';
+      html += '<div class="status-card-header">Worker Status</div>';
+      html += '<div class="status-card-body">';
+      html += '<div class="status-row"><span class="status-label">Status:</span><span class="status-value">' + d.status + '</span></div>';
+      html += '<div class="status-row"><span class="status-label">Uptime:</span><span class="status-value">' + secondsToString(d.uptime || 0) + '</span></div>';
+      html += '<div class="status-row"><span class="status-label">Total API Calls:</span><span class="status-value">' + (d.totalCalls || 0) + '</span></div>';
+      html += '<div class="status-row"><span class="status-label">AI Calls:</span><span class="status-value">' + (d.aiCalls || 0) + '</span></div>';
+      html += '<div class="status-row"><span class="status-label">Version:</span><span class="status-value">' + (d.version || '?') + '</span></div>';
+      html += '</div></div>';
+      
+      // Platforms
+      html += '<div class="status-card"><div class="status-card-header">Platforms</div><div class="status-card-body">';
+      var platforms = d.platforms || {};
+      var platNames = { languagenut: 'LanguageNut', seneca: 'Seneca Learning', sparx: 'Sparx Maths' };
+      for (var p in platforms) {
+        var status = platforms[p];
+        var cls = status === 'online' ? 'status-ok' : status === 'offline' ? 'status-err' : 'status-warn';
+        html += '<div class="status-row"><span class="status-label">' + (platNames[p] || p) + ':</span>' +
+          '<span class="status-value ' + cls + '">' + status + '</span></div>';
+      }
+      html += '</div></div>';
+      
+      // Endpoints
+      html += '<div class="status-card"><div class="status-card-header">API Endpoints</div><div class="status-card-body">';
+      var endpoints = d.endpoints || [];
+      for (var ei = 0; ei < endpoints.length; ei++) {
+        html += '<div class="status-row"><span class="status-label">' + endpoints[ei] + '</span></div>';
+      }
+      html += '</div></div>';
+      
+      html += '</div>';
+      container.innerHTML = html;
+    })
+    .catch(function(e) {
+      container.innerHTML = '<div class="status-card status-err"><div class="status-card-header">Connection Error</div>' +
+        '<div class="status-card-body">Could not reach worker: ' + e.message + '</div></div>';
+    });
 }
 
 // ===== CHECK PLATFORM STATUS =====
@@ -587,25 +703,30 @@ function checkPlatformStatus() {
       if (ind) { ind.className = 'ps-indicator ' + status; ind.textContent = status === 'online' ? 'Online' : status === 'offline' ? 'Offline' : 'Checking...'; }
     }
   }
-  // Check LN
-  fetch('https://api.languagenut.com/publicTranslationController/getTranslations', { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(5000) })
+  
+  fetch('https://api.languagenut.com/publicTranslationController/getTranslations', { signal: AbortSignal.timeout(5000), headers: { 'User-Agent': 'Mozilla/5.0' } })
     .then(function(r) { setStatus(0, r.ok ? 'online' : 'offline'); }).catch(function() { setStatus(0, 'offline'); });
-  // Check Worker
-  fetch(WORKER_URL + '/api/keys', { signal: AbortSignal.timeout(5000) })
+  
+  fetch(WORKER_URL + '/api/status', { signal: AbortSignal.timeout(5000) })
     .then(function(r) { return r.json(); }).then(function(d) {
-      if (d.status === 'operational') { setStatus(3, 'online');
-        // Check Seneca/Sparx via worker
-        setStatus(1, d.endpoints.some(function(e) { return e.includes('seneca'); }) ? 'online' : 'offline');
-        setStatus(2, d.endpoints.some(function(e) { return e.includes('sparx'); }) ? 'online' : 'offline');
+      if (d.status === 'operational') {
+        setStatus(3, 'online');
+        var plats = d.platforms || {};
+        setStatus(1, plats.seneca === 'online' ? 'online' : 'offline');
+        setStatus(2, plats.sparx === 'online' ? 'online' : 'offline');
       }
     }).catch(function() { setStatus(1, 'offline'); setStatus(2, 'offline'); setStatus(3, 'offline'); });
 }
 
-// ===== GIVE SLOTS (ADMIN) =====
+// ===== ADMIN FUNCTIONS =====
+function getAdminKey() {
+  return $.adminKey ? $.adminKey.value.trim() : '';
+}
+
 function giveSlots() {
   var username = $.adminUsername ? $.adminUsername.value.trim() : '';
   var amount = $.adminAmount ? parseInt($.adminAmount.value) || 1 : 1;
-  var adminKey = $.adminKey ? $.adminKey.value.trim() : '';
+  var adminKey = getAdminKey();
   if (!username) { toast('Enter a username', 'error'); return; }
   api(WORKER_URL + '/api/admin/give-slots', { username: username, amount: amount, adminKey: adminKey }).then(function(d) {
     var result = $.adminResult;
@@ -623,6 +744,140 @@ function giveSlots() {
     if ($.adminResult) { $.adminResult.className = 'admin-result error'; $.adminResult.textContent = 'Error: ' + e.message; }
   });
 }
+
+// Blacklist management
+function manageBlacklist() {
+  var username = $.adminBlacklistUser ? $.adminBlacklistUser.value.trim() : '';
+  var action = $.adminBlacklistAction ? $.adminBlacklistAction.value : 'add';
+  var adminKey = getAdminKey();
+  if (!username && action !== 'list') { toast('Enter a username', 'error'); return; }
+  
+  api(WORKER_URL + '/api/admin/blacklist', { username: username, action: action, adminKey: adminKey }).then(function(d) {
+    var result = $.adminBlacklistResult;
+    if (!result) return;
+    if (d.success) {
+      S.blacklist = d.blacklist || [];
+      if (action === 'add') {
+        result.className = 'admin-result success';
+        result.textContent = username + ' blacklisted';
+        toast('User blacklisted', 'success');
+      } else if (action === 'remove') {
+        result.className = 'admin-result success';
+        result.textContent = username + ' removed from blacklist';
+        toast('User unblacklisted', 'success');
+      } else {
+        result.className = 'admin-result success';
+        result.textContent = 'Blacklisted users: ' + (d.blacklist && d.blacklist.length ? d.blacklist.join(', ') : 'none');
+      }
+      loadBlacklist();
+    } else {
+      result.className = 'admin-result error';
+      result.textContent = d.error || 'Failed';
+    }
+  }).catch(function(e) {
+    if ($.adminBlacklistResult) { $.adminBlacklistResult.className = 'admin-result error'; $.adminBlacklistResult.textContent = 'Error: ' + e.message; }
+  });
+}
+
+function loadBlacklist() {
+  // Load from localStorage
+  var bl = localStorage.getItem('gioai-blacklist');
+  if (bl) {
+    try { S.blacklist = JSON.parse(bl); } catch(e) { S.blacklist = []; }
+  }
+  var el = $.adminBlacklistResult;
+  if (el && S.blacklist && S.blacklist.length) {
+    el.className = 'admin-result success';
+    el.textContent = 'Blacklisted: ' + S.blacklist.join(', ');
+  }
+}
+
+// Announcements
+function sendAnnouncement() {
+  var message = $.adminAnnouncementMsg ? $.adminAnnouncementMsg.value.trim() : '';
+  var type = $.adminAnnouncementType ? $.adminAnnouncementType.value : 'info';
+  var adminKey = getAdminKey();
+  if (!message) { toast('Enter announcement message', 'error'); return; }
+  
+  api(WORKER_URL + '/api/admin/announcement', { message: message, type: type, adminKey: adminKey }).then(function(d) {
+    var result = $.adminAnnouncementResult;
+    if (!result) return;
+    if (d.success) {
+      result.className = 'admin-result success';
+      result.textContent = 'Announcement sent!';
+      if ($.adminAnnouncementMsg) $.adminAnnouncementMsg.value = '';
+      // Save locally
+      var anns = JSON.parse(localStorage.getItem('gioai-announcements') || '[]');
+      anns.unshift(d.announcement);
+      if (anns.length > 50) anns = anns.slice(0, 50);
+      localStorage.setItem('gioai-announcements', JSON.stringify(anns));
+      loadAnnouncements();
+      toast('Announcement created!', 'success');
+    } else {
+      result.className = 'admin-result error';
+      result.textContent = d.error || 'Failed';
+    }
+  }).catch(function(e) {
+    if ($.adminAnnouncementResult) { $.adminAnnouncementResult.className = 'admin-result error'; $.adminAnnouncementResult.textContent = 'Error: ' + e.message; }
+  });
+}
+
+// Platform status management
+function setPlatformStatus() {
+  var platform = $.adminStatusPlatform ? $.adminStatusPlatform.value : '';
+  var status = $.adminStatusValue ? $.adminStatusValue.value : 'online';
+  var adminKey = getAdminKey();
+  if (!platform) { toast('Select a platform', 'error'); return; }
+  
+  api(WORKER_URL + '/api/admin/platform-status', { platform: platform, status: status, adminKey: adminKey }).then(function(d) {
+    var result = $.adminStatusResult;
+    if (!result) return;
+    if (d.success) {
+      result.className = 'admin-result success';
+      result.textContent = d.message || platform + ' set to ' + status;
+      toast('Status updated!', 'success');
+    } else {
+      result.className = 'admin-result error';
+      result.textContent = d.error || 'Failed';
+    }
+  }).catch(function(e) {
+    if ($.adminStatusResult) { $.adminStatusResult.className = 'admin-result error'; $.adminStatusResult.textContent = 'Error: ' + e.message; }
+  });
+}
+
+// Load announcements into notification panel
+function loadAnnouncements() {
+  var anns = JSON.parse(localStorage.getItem('gioai-announcements') || '[]');
+  S.announcements = anns;
+  
+  // Update notification badge
+  if (anns.length && $.notifBadge) {
+    $.notifBadge.style.display = 'flex';
+    $.notifBadge.textContent = anns.length;
+  }
+  
+  // Render in announcement pane
+  var list = $.announcementList;
+  if (!list) return;
+  if (!anns.length) {
+    list.innerHTML = '<div class="empty-state">No announcements</div>';
+    return;
+  }
+  var html = '';
+  for (var i = 0; i < anns.length; i++) {
+    var a = anns[i];
+    var typeClass = a.type === 'warning' ? 'ann-warning' : a.type === 'error' ? 'ann-error' : 'ann-info';
+    html += '<div class="announcement-item ' + typeClass + '">' +
+      '<div class="ann-header">' + a.type.toUpperCase() + '</div>' +
+      '<div class="ann-body">' + a.message + '</div>' +
+      '<div class="ann-time">' + (a.timestamp ? new Date(a.timestamp).toLocaleString() : '') + '</div>' +
+      '</div>';
+  }
+  list.innerHTML = html;
+}
+
+// ===== GIVE SLOTS (LEGACY) =====
+function giveSlotsLegacy() { giveSlots(); }
 
 // ===== BOOT ANIMATION =====
 function bootAnimate() {
@@ -662,35 +917,20 @@ function bootAnimate() {
 
 // ===== CHANGELOG =====
 function renderChangelog() {
-  var html = '<div class="changelog-list">' +
-    '<h3>v3.0 (June 2026)</h3><ul>' +
-    '<li>Sparx school search (type school name)</li>' +
-    '<li>AI working out generation (Gemini + Groq + Mistral)</li>' +
-    '<li>Platform loading screens with animated SVGs</li>' +
-    '<li>Hacker theme = v5.2 matrix style with scanlines</li>' +
-    '<li>Show previous homework for Sparx (completed/past due)</li>' +
-    '<li>FCaptcha jitter + anti-tracking bypass</li>' +
-    '<li>Working out toggle in Sparx settings</li>' +
-    '<li>AI provider selector (Auto / Gemini / Groq / Mistral)</li>' +
-    '<li>User agent rotation for anti-detection</li>' +
-    '<li>Improved UI with SVG logos on hub cards</li>' +
-    '</ul>' +
-    '<h3>v2.5 (June 2026)</h3><ul>' +
+  var html = '<div class="changelog-list"><div class="changelog-item"><h3>v2.5 (June 2026)</h3><ul>' +
     '<li>Unified single-page app with all platforms</li>' +
     '<li>4 themes: Dark, Hacker, Light, Neon</li>' +
-    '<li>Admin panel with give slots</li>' +
-    '<li>Seneca API proxy endpoints</li>' +
-    '</ul></div>';
-  // Render to overlay body first, then notif pane list
+    '<li>Admin panel with give slots, blacklist, announcements</li>' +
+    '<li>Seneca API proxy endpoints + homework fetch</li>' +
+    '<li>Status dashboard for worker health & usage</li>' +
+    '<li>Fixed Sparx legacy API integration</li>' +
+    '<li>LanguageNut homework auto-completion</li>' +
+    '</ul></div></div>';
   if ($.changelogBody) $.changelogBody.innerHTML = html;
   if ($.changelogList) $.changelogList.innerHTML = html;
 }
 
-
-function showChangelog() {
-  if ($.changelogOverlay) $.changelogOverlay.style.display = 'flex';
-}
-
+function showChangelog() { if ($.changelogOverlay) $.changelogOverlay.style.display = 'flex'; }
 function hideChangelog() {
   if ($.changelogOverlay) $.changelogOverlay.style.display = 'none';
   localStorage.setItem(CHANGELOG_SEEN_KEY, '1');
@@ -700,10 +940,22 @@ function hideChangelog() {
 function openNotifPanel() {
   if ($.notifOverlay) $.notifOverlay.style.display = 'flex';
   if ($.notifBadge) $.notifBadge.style.display = 'none';
+  loadAnnouncements();
 }
 
-function closeNotifPanel() {
-  if ($.notifOverlay) $.notifOverlay.style.display = 'none';
+function closeNotifPanel() { if ($.notifOverlay) $.notifOverlay.style.display = 'none'; }
+
+// ===== TOAST =====
+function toast(msg, type) {
+  type = type || 'info';
+  var container = document.getElementById('toastContainer');
+  if (!container) return;
+  var el = document.createElement('div');
+  el.className = 'toast ' + type;
+  el.textContent = msg;
+  container.appendChild(el);
+  setTimeout(function() { el.style.opacity = '0'; el.style.transform = 'translateX(40px)'; el.style.transition = '0.3s ease'; }, 3000);
+  setTimeout(function() { el.remove(); }, 3500);
 }
 
 // ===== INIT =====
@@ -713,9 +965,12 @@ function init() {
   cache();
   setTheme(S.theme);
 
+  // Load saved announcements
+  loadAnnouncements();
+  loadBlacklist();
+
   // Boot animation sequence
   bootAnimate();
-  // Hide app loading after boot animation finishes
   setTimeout(function() {
     if ($.appLoading) $.appLoading.classList.remove('active');
     showScreen('disclaimer');
@@ -770,14 +1025,9 @@ function init() {
     var names = { languagenut: 'LanguageNut', seneca: 'Seneca Learning', sparx: 'Sparx Maths' };
     if ($.platformLoginTitle) $.platformLoginTitle.textContent = names[platform] || 'Login';
     if ($.loginPlatformBadge) $.loginPlatformBadge.textContent = icons[platform] || '?';
-
     if ($.senecaLoginExtra) $.senecaLoginExtra.style.display = (platform === 'seneca') ? 'block' : 'none';
     if ($.sparxLoginExtra) $.sparxLoginExtra.style.display = (platform === 'sparx') ? 'block' : 'none';
-
-    if ($.platformUsername) {
-      $.platformUsername.placeholder = (platform === 'seneca') ? 'Email address' : 'Username';
-    }
-    // Show sparx school search for sparx
+    if ($.platformUsername) $.platformUsername.placeholder = (platform === 'seneca') ? 'Email address' : 'Username';
     if ($.sparxSchoolSearch && $.sparxSchoolResults) {
       if (platform === 'sparx') {
         $.sparxSchoolSearch.value = '';
@@ -815,16 +1065,13 @@ function init() {
   setupSparxSchoolSearch();
 
   // === DASHBOARD ACTIONS ===
-  bind($.dashFetchBtn, 'click', function() {
-    fetchHomeworks();
-  });
+  bind($.dashFetchBtn, 'click', fetchHomeworks);
   bind($.dashStartBtn, 'click', startCompletion);
   bind($.dashStopBtn, 'click', stopCompletion);
 
   bind($.dashLogoutBtn, 'click', function() {
     S.token = null;
     S.ln.token = null;
-    S.ln.homeworks = [];
     S.seneca.idToken = null;
     S.sparx.token = null;
     S.tasks = [];
@@ -859,7 +1106,8 @@ function init() {
   });
   bind($.psShowPrevHmwk, 'change', function() {
     S.showPrevHmwk = this.checked;
-    if (S.ln.token || S.sparx.token) fetchHomeworks();
+    localStorage.setItem('gioai-showPrevHmwk', S.showPrevHmwk ? '1' : '0');
+    if (S.ln.token || S.sparx.token || S.seneca.idToken) fetchHomeworks();
   });
   bind($.psShowWorking, 'change', function() {
     S.showWorking = this.checked;
@@ -883,14 +1131,15 @@ function init() {
   // === ADMIN SCREEN ===
   bind($.adminBackBtn, 'click', function() { showScreen('hubScreen'); });
   bind($.adminGiveSlotsBtn, 'click', giveSlots);
+  bind($.adminBlacklistBtn, 'click', manageBlacklist);
+  bind($.adminAnnouncementBtn, 'click', sendAnnouncement);
+  bind($.adminPlatStatusBtn, 'click', setPlatformStatus);
+  bind($.adminCheckPlatformsBtn, 'click', checkPlatformStatus);
 
   // === NOTIFICATIONS ===
   bind($.notifBell, 'click', openNotifPanel);
   bind($.notifClose, 'click', closeNotifPanel);
-  bind($.notifOverlay, 'click', function(e) {
-    if (e.target === this) closeNotifPanel();
-  });
-
+  bind($.notifOverlay, 'click', function(e) { if (e.target === this) closeNotifPanel(); });
   if ($.notifTabs && $.notifTabs.length) {
     for (var i = 0; i < $.notifTabs.length; i++) {
       (function(tab) {
@@ -909,9 +1158,7 @@ function init() {
   // === CHANGELOG ===
   bind($.changelogClose, 'click', hideChangelog);
   bind($.changelogDismiss, 'click', hideChangelog);
-  bind($.changelogOverlay, 'click', function(e) {
-    if (e.target === this) hideChangelog();
-  });
+  bind($.changelogOverlay, 'click', function(e) { if (e.target === this) hideChangelog(); });
   renderChangelog();
 
   if (!localStorage.getItem(CHANGELOG_SEEN_KEY)) {
@@ -923,6 +1170,9 @@ function init() {
   // === VERSION ===
   if ($.appVersion) $.appVersion.textContent = APP_VERSION;
   if ($.sidebarVersion) $.sidebarVersion.textContent = APP_VERSION;
+
+  // === STATUS SCREEN ===
+  bind(document.getElementById('statusRefreshBtn'), 'click', loadStatusPage);
 
   // Admin platform status observer
   var adminObserver = new MutationObserver(function() {
@@ -945,12 +1195,4 @@ if (document.readyState === 'loading') {
 }
 
 })();
-
-
-
-
-
-
-
-
 

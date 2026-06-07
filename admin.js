@@ -1,522 +1,371 @@
-(function() {
-    'use strict';
+// ============================================================
+// GIOAI v6.0 - Admin Panel (standalone)
+// Handles: Auth, Blacklist, Announcements, Platform Status, Slots
+// ============================================================
 
-    var ADMIN_PASSWORD = '@Gk69614789';
-    var STORAGE_KEY = 'gioai-platform-status';
-    var BOT_STATUS_KEY = 'gioai-bot-status';
-    var WEBSITE_STATUS_KEY = 'gioai-website-status';
-    var ANNOUNCEMENTS_KEY = 'gioai-announcements';
-    var BLACKLIST_KEY = 'gioai-platform-blacklist';
-    var LOGS_KEY = 'gioai-admin-logs';
-    var STATS_KEY = 'gioai-admin-stats';
+var ADMIN_PASSWORD = '@Gk69614789';
+var WORKER_URL = 'https://gioai.giannikei12.workers.dev';
+var API_BASE = WORKER_URL + '/api';
 
-    var defaultStatuses = [
-        { id: 'languagenut', label: 'LanguageNut', status: 'unstable' },
-        { id: 'seneca', label: 'Seneca', status: 'unstable' },
-        { id: 'sparx', label: 'Sparx Maths', status: 'working' }
-    ];
-    var statusOptions = ['working', 'unstable', 'maintenance', 'down', 'coming'];
-    var platformNames = { languagenut: 'LanguageNut', sparx: 'Sparx Maths', seneca: 'Seneca Learning', all: 'All Platforms' };
-    var platformList = ['sparx', 'languagenut', 'seneca'];
+// Check if we're in standalone admin.html or embedded
+var isStandalone = window.location.pathname.indexOf('admin.html') !== -1;
 
-    /* ===== STORAGE HELPERS ===== */
-    function loadStatuses() {
-        try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || JSON.parse(JSON.stringify(defaultStatuses)); }
-        catch(e) { return JSON.parse(JSON.stringify(defaultStatuses)); }
+// ===== ADMIN STATE =====
+var A = {
+  authenticated: false,
+  adminKey: localStorage.getItem('gioai-admin-key') || 'gioai-default-admin-key',
+  blacklist: JSON.parse(localStorage.getItem('gioai-blacklist') || '[]'),
+  announcements: JSON.parse(localStorage.getItem('gioai-announcements') || '[]')
+};
+
+// ===== INIT =====
+function adminInit() {
+  if (isStandalone) {
+    // Check if already authenticated
+    if (localStorage.getItem('gioai-admin-auth') === '1') {
+      A.authenticated = true;
+      showAdminPanel();
     }
-    function saveStatuses(s) { localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); }
-
-    function loadBotStatus() {
-        try { return JSON.parse(localStorage.getItem(BOT_STATUS_KEY)) || { global: 'online' }; }
-        catch(e) { return { global: 'online' }; }
-    }
-    function saveBotStatus(b) { localStorage.setItem(BOT_STATUS_KEY, JSON.stringify(b)); }
-
-    function loadBlacklist() {
-        try { return JSON.parse(localStorage.getItem(BLACKLIST_KEY)) || []; }
-        catch(e) { return []; }
-    }
-    function saveBlacklist(b) { localStorage.setItem(BLACKLIST_KEY, JSON.stringify(b)); }
-
-    function loadLogs() {
-        try { return JSON.parse(localStorage.getItem(LOGS_KEY)) || []; }
-        catch(e) { return []; }
-    }
-    function saveLogs(l) { localStorage.setItem(LOGS_KEY, JSON.stringify(l)); }
-
-    function addLog(msg, type, platform) {
-        type = type || 'info';
-        platform = platform || 'general';
-        var logs = loadLogs();
-        logs.push({ msg: msg, type: type, platform: platform, time: new Date().toISOString() });
-        if (logs.length > 500) logs = logs.slice(-500);
-        saveLogs(logs);
-    }
-
-    function loadStats() {
-        try { return JSON.parse(localStorage.getItem(STATS_KEY)) || { totalTasks: 0, todayTasks: 0, errors: 0, platforms: {} }; }
-        catch(e) { return { totalTasks: 0, todayTasks: 0, errors: 0, platforms: {} }; }
-    }
-    function saveStats(s) { localStorage.setItem(STATS_KEY, JSON.stringify(s)); }
-
-    /* ===== SAVED ACCOUNTS HELPERS ===== */
-    function getSavedAccounts(platform) {
-        try { return JSON.parse(localStorage.getItem('gioai-saved-accounts-' + platform) || '[]'); }
-        catch(e) { return []; }
-    }
-    function saveSavedAccounts(platform, accounts) {
-        localStorage.setItem('gioai-saved-accounts-' + platform, JSON.stringify(accounts));
-    }
-
-    /* ===== RENDER FUNCTIONS ===== */
-    function renderStatusGrid(statuses) {
-        var grid = document.getElementById('platformStatusGrid');
-        if (!grid) return;
-        var html = '';
-        statuses.forEach(function(s) {
-            html += '<div class="status-item">' +
-                '<label>' + s.label + '</label>' +
-                '<select data-id="' + s.id + '" class="status-select">' +
-                statusOptions.map(function(o) { return '<option value="' + o + '"' + (o === s.status ? ' selected' : '') + '>' + o.charAt(0).toUpperCase() + o.slice(1) + '</option>'; }).join('') +
-                '</select></div>';
-        });
-        grid.innerHTML = html;
-    }
-
-    function renderQuickStatus() {
-        var statuses = loadStatuses();
-        statuses.forEach(function(s) {
-            var el = document.getElementById('qs-' + s.id);
-            if (el) el.textContent = s.status;
-        });
-    }
-
-    function renderBlacklist() {
-        var container = document.getElementById('blacklistContainer');
-        if (!container) return;
-        var list = loadBlacklist();
-        if (list.length === 0) {
-            container.innerHTML = '<div class="empty-state">No users blacklisted.</div>';
-            return;
-        }
-        var html = '';
-        list.forEach(function(item, idx) {
-            var platforms = item.platforms || [];
-            var username = item.username || 'unknown';
-            var passwordInfo = item.password ? ' (pw req)' : '';
-            html += '<div class="blacklist-item" data-idx="' + idx + '">' +
-                '<span style="font-weight:600">' + username + '</span>' +
-                '<span style="font-size:.7rem;color:var(--text3)">' + passwordInfo + '</span>' +
-                '<div class="platform-tags">';
-            platformList.forEach(function(p) {
-                var active = platforms.indexOf('all') >= 0 || platforms.indexOf(p) >= 0;
-                html += '<span class="platform-tag' + (active ? ' active-tag' : '') + '" data-idx="' + idx + '" data-platform="' + p + '">' + platformNames[p] + '</span>';
-            });
-            html += '</div>' +
-                '<span class="unban" data-idx="' + idx + '">Remove</span></div>';
-        });
-        container.innerHTML = html;
-
-        // Platform tag toggles
-        container.querySelectorAll('.platform-tag').forEach(function(tag) {
-            tag.addEventListener('click', function() {
-                var idx = parseInt(this.dataset.idx);
-                var platform = this.dataset.platform;
-                var list = loadBlacklist();
-                if (idx < 0 || idx >= list.length) return;
-                var p = list[idx].platforms || [];
-                if (platform === 'all') {
-                    if (p.indexOf('all') >= 0) { list.splice(idx, 1); saveBlacklist(list); renderBlacklist(); return; }
-                    else { list[idx].platforms = ['all']; }
-                } else {
-                    var allIdx = p.indexOf('all');
-                    if (allIdx >= 0) p.splice(allIdx, 1);
-                    var pi = p.indexOf(platform);
-                    if (pi >= 0) { p.splice(pi, 1); } else { p.push(platform); }
-                    if (p.length === 0) { list.splice(idx, 1); saveBlacklist(list); renderBlacklist(); return; }
-                    list[idx].platforms = p;
-                }
-                saveBlacklist(list);
-                renderBlacklist();
-                addLog('Toggled blacklist platform for ' + (list[idx] ? list[idx].username : 'user'), 'info', 'general');
-            });
-        });
-
-        // Remove buttons
-        container.querySelectorAll('.unban').forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                var idx = parseInt(this.dataset.idx);
-                var list = loadBlacklist();
-                if (idx >= 0 && idx < list.length) {
-                    var name = list[idx].username;
-                    list.splice(idx, 1);
-                    saveBlacklist(list);
-                    renderBlacklist();
-                    addLog('Unbanned ' + name, 'info', 'general');
-                }
-            });
-        });
-    }
-
-    function renderLogs(filter, platform) {
-        filter = filter || 'all';
-        platform = platform || 'all';
-        var container = document.getElementById('logContent');
-        if (!container) return;
-        var logs = loadLogs();
-        if (filter !== 'all') logs = logs.filter(function(l) { return l.type === filter; });
-        if (platform !== 'all') logs = logs.filter(function(l) { return l.platform === platform; });
-        if (logs.length === 0) {
-            container.innerHTML = '<div style="color:var(--text3)">No logs found.</div>';
-            return;
-        }
-        var html = '';
-        logs.slice(-50).reverse().forEach(function(l) {
-            var d = new Date(l.time);
-            var timeStr = d.toLocaleTimeString();
-            var color = l.type === 'error' ? 'var(--danger)' : l.type === 'success' ? 'var(--success)' : l.type === 'warning' ? 'var(--warning)' : 'var(--text2)';
-            html += '<div style="color:' + color + '">[' + timeStr + '] [' + l.type + '] ' + l.msg + '</div>';
-        });
-        container.innerHTML = html;
-        container.scrollTop = 0;
-    }
-
-    function renderAnnouncements() {
-        var container = document.getElementById('announceContainer');
-        if (!container) return;
-        try {
-            var ann = JSON.parse(localStorage.getItem(ANNOUNCEMENTS_KEY) || '[]');
-            if (ann.length === 0) { container.innerHTML = '<div class="empty-state">No announcements posted yet.</div>'; return; }
-            var html = '';
-            ann.forEach(function(a, i) {
-                var d = new Date(a.time);
-                var type = a.type || 'announcement';
-                html += '<div class="announce-item">' +
-                    '<span><span style="font-size:.65rem;padding:.1rem .4rem;border-radius:3px;background:' + (type === 'changelog' ? 'var(--success)' : 'var(--accent)') + ';color:#fff;margin-right:.3rem">' + type + '</span>' +
-                    a.text + ' <span style="font-size:.7rem;color:var(--text3)">(' + d.toLocaleDateString() + ')</span></span>' +
-                    '<span class="del" data-idx="' + i + '">X</span></div>';
-            });
-            container.innerHTML = html;
-            container.querySelectorAll('.del').forEach(function(el) {
-                el.addEventListener('click', function() {
-                    var idx = parseInt(this.dataset.idx);
-                    try {
-                        var a = JSON.parse(localStorage.getItem(ANNOUNCEMENTS_KEY) || '[]');
-                        a.splice(idx, 1);
-                        localStorage.setItem(ANNOUNCEMENTS_KEY, JSON.stringify(a));
-                        renderAnnouncements();
-                    } catch(e) {}
-                });
-            });
-        } catch(e) {}
-    }
-
-    function renderSavedAccounts() {
-        var plat = document.getElementById('accountsPlatformSelect');
-        if (!plat) return;
-        var platform = plat.value;
-        var container = document.getElementById('accountsContainer');
-        if (!container) return;
-        var accounts = getSavedAccounts(platform);
-        if (accounts.length === 0) {
-            container.innerHTML = '<div class="empty-state">No saved accounts for ' + platformNames[platform] + '.</div>';
-            return;
-        }
-        var html = '';
-        accounts.forEach(function(a, i) {
-            html += '<div class="account-item">' +
-                '<span><strong>' + a.username + '</strong> <span style="color:var(--text3);font-size:.7rem">(' + (a.uses || 0) + ' uses)</span></span>' +
-                '<div class="manage">' +
-                '<input type="number" class="uses-input" data-idx="' + i + '" value="' + (a.uses || 0) + '" min="0" style="width:60px;padding:.2rem .3rem;font-size:.75rem">' +
-                '<button class="btn btn-sm update-uses" data-idx="' + i + '">Set</button>' +
-                '<button class="btn btn-sm" style="color:var(--danger)" onclick="var a=JSON.parse(localStorage.getItem(\'gioai-saved-accounts-' + platform + '\')||\'[]\');a.splice(' + i + ',1);localStorage.setItem(\'gioai-saved-accounts-' + platform + '\',JSON.stringify(a));document.getElementById(\'refreshAccountsBtn\').click()">X</button></div></div>';
-        });
-        container.innerHTML = html;
-        container.querySelectorAll('.update-uses').forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                var idx = parseInt(this.dataset.idx);
-                var input = this.parentElement.querySelector('.uses-input');
-                var val = parseInt(input.value);
-                if (isNaN(val) || val < 0) { alert('Enter a valid number'); return; }
-                var accounts = getSavedAccounts(platform);
-                if (idx >= 0 && idx < accounts.length) {
-                    accounts[idx].uses = val;
-                    saveSavedAccounts(platform, accounts);
-                    renderSavedAccounts();
-                    addLog('Updated uses for ' + accounts[idx].username + ' to ' + val, 'info', 'general');
-                }
-            });
-        });
-    }
-
-    function updateTimestamp() {
-        var el = document.getElementById('timestamp');
-        if (el) el.textContent = new Date().toLocaleString();
-    }
-
-    function updateStats() {
-        var stats = loadStats();
-        var totalEl = document.getElementById('statTotal');
-        var todayEl = document.getElementById('statToday');
-        var errorsEl = document.getElementById('statErrors');
-        var platEl = document.getElementById('statPlatforms');
-        if (totalEl) totalEl.textContent = stats.totalTasks || 0;
-        if (todayEl) todayEl.textContent = stats.todayTasks || 0;
-        if (errorsEl) errorsEl.textContent = stats.errors || 0;
-        if (platEl) platEl.textContent = Object.keys(stats.platforms || {}).length || 0;
-    }
-
-    /* ===== AUTH ===== */
-    var authDiv = document.getElementById('adminAuth');
-    var panelDiv = document.getElementById('adminPanel');
-    var passInput = document.getElementById('adminPass');
-    var loginBtn = document.getElementById('adminLoginBtn');
-    var logoutBtn = document.getElementById('adminLogoutBtn');
-    var adminError = document.getElementById('adminError');
-
-    function enterPanel() {
-        if (authDiv) authDiv.style.display = 'none';
-        if (panelDiv) panelDiv.style.display = 'block';
-        var statuses = loadStatuses();
-        renderStatusGrid(statuses);
-        renderQuickStatus();
-        updateTimestamp();
-        updateStats();
-        renderLogs('all', 'all');
-        renderAnnouncements();
-        renderBlacklist();
-        renderSavedAccounts();
-        loadBotStatusUI();
-        loadWebsiteStatusUI();
-    }
-
-    if (sessionStorage.getItem('gioai-admin-auth') === 'true') {
-        enterPanel();
-    }
-
-    if (loginBtn) {
-        loginBtn.addEventListener('click', function() {
-            var pass = passInput ? passInput.value : '';
-            if (pass === ADMIN_PASSWORD) {
-                sessionStorage.setItem('gioai-admin-auth', 'true');
-                if (adminError) adminError.style.display = 'none';
-                if (passInput) passInput.value = '';
-                enterPanel();
-                addLog('Admin logged in', 'info', 'general');
-            } else {
-                if (adminError) { adminError.textContent = 'Invalid password. Try again.'; adminError.style.display = 'block'; }
-                if (passInput) { passInput.value = ''; passInput.focus(); }
-            }
-        });
-    }
-    if (passInput) {
-        passInput.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter' && loginBtn) loginBtn.click();
-        });
-    }
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', function() {
-            sessionStorage.removeItem('gioai-admin-auth');
-            location.reload();
-        });
-    }
-
-    /* ===== PLATFORM STATUS ===== */
-    document.getElementById('saveStatusBtn') && document.getElementById('saveStatusBtn').addEventListener('click', function() {
-        var selects = document.querySelectorAll('.status-select');
-        var statuses = [];
-        selects.forEach(function(sel) {
-            statuses.push({ id: sel.dataset.id, label: defaultStatuses.find(function(s) { return s.id === sel.dataset.id; })?.label || sel.dataset.id, status: sel.value });
-        });
-        saveStatuses(statuses);
-        renderQuickStatus();
-        addLog('Platform statuses saved', 'success', 'general');
-        updateTimestamp();
+    bindEl('adminLoginBtn', 'click', adminLogin);
+    bindEl('adminPassword', 'keydown', function(e) {
+      if (e.key === 'Enter') adminLogin();
     });
+  }
+  
+  // Admin panel actions
+  bindEl('giveSlotsBtn', 'click', giveSlots);
+  bindEl('blacklistBtn', 'click', manageBlacklist);
+  bindEl('announcementBtn', 'click', sendAnnouncement);
+  bindEl('platformStatusBtn', 'click', setPlatformStatus);
+  bindEl('checkPlatformsBtn', 'click', checkAllPlatforms);
+  bindEl('refreshStatusBtn', 'click', refreshStatus);
+  bindEl('logoutBtn', 'click', adminLogout);
+  
+  // Load data
+  loadBlacklist();
+  loadAnnouncements();
+}
 
-    document.getElementById('refreshBtn') && document.getElementById('refreshBtn').addEventListener('click', function() {
-        var s = loadStatuses();
-        renderStatusGrid(s);
-        updateTimestamp();
-        updateStats();
+function bindEl(id, fn) {
+  var el = document.getElementById(id);
+  if (el) el.addEventListener('click', fn);
+}
+
+// ===== AUTHENTICATION =====
+function adminLogin() {
+  var pass = document.getElementById('adminPassword');
+  if (!pass) return;
+  var val = pass.value.trim();
+  if (val === ADMIN_PASSWORD) {
+    A.authenticated = true;
+    localStorage.setItem('gioai-admin-auth', '1');
+    showAdminPanel();
+    toast('Admin authenticated', 'success');
+  } else {
+    // Also try SHA-256
+    sha256(val).then(function(hash) {
+      if (hash === 'b38c75356f6a622c2df4036e9c96c4f455f2e298685bf0ae03c602a1b32b0b9a') {
+        A.authenticated = true;
+        localStorage.setItem('gioai-admin-auth', '1');
+        showAdminPanel();
+        toast('Admin authenticated (hash)', 'success');
+      } else {
+        toast('Invalid password', 'error');
+      }
+    }).catch(function() {
+      toast('Invalid password', 'error');
     });
+  }
+}
 
-    document.getElementById('resetDefaultsBtn') && document.getElementById('resetDefaultsBtn').addEventListener('click', function() {
-        if (confirm('Reset all platform statuses to defaults?')) {
-            localStorage.removeItem(STORAGE_KEY);
-            var s = loadStatuses();
-            renderStatusGrid(s);
-            renderQuickStatus();
-            updateTimestamp();
-            addLog('Platform statuses reset to defaults', 'info', 'general');
-        }
-    });
+function adminLogout() {
+  A.authenticated = false;
+  localStorage.removeItem('gioai-admin-auth');
+  if (isStandalone) {
+    document.getElementById('loginScreen').style.display = 'flex';
+    document.getElementById('adminPanel').style.display = 'none';
+  }
+  toast('Logged out', 'info');
+}
 
-    /* ===== BOT STATUS ===== */
-    function loadBotStatusUI() {
-        var bs = loadBotStatus();
-        var sel = document.getElementById('globalBotStatus');
-        if (sel && bs.global) sel.value = bs.global;
+function showAdminPanel() {
+  if (isStandalone) {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('adminPanel').style.display = 'block';
+  }
+  loadAnnouncements();
+  loadBlacklist();
+  refreshStatus();
+  checkAllPlatforms();
+}
+
+// ===== API CALLS =====
+function adminApi(path, data) {
+  data.adminKey = A.adminKey;
+  return fetch(API_BASE + path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  }).then(function(r) { return r.json(); });
+}
+
+// ===== GIVE SLOTS =====
+function giveSlots() {
+  var username = document.getElementById('adminUsername');
+  var amount = document.getElementById('adminAmount');
+  var result = document.getElementById('adminResult');
+  if (!username || !amount || !result) return;
+  var u = username.value.trim();
+  var a = parseInt(amount.value) || 1;
+  if (!u) { result.className = 'admin-result error'; result.textContent = 'Enter a username'; return; }
+  
+  result.className = 'admin-result';
+  result.textContent = 'Processing...';
+  
+  adminApi('/admin/give-slots', { username: u, amount: a }).then(function(d) {
+    if (d.success) {
+      result.className = 'admin-result success';
+      result.textContent = d.message || 'Added ' + a + ' slots to ' + u;
+    } else {
+      result.className = 'admin-result error';
+      result.textContent = d.error || 'Failed';
     }
-    document.getElementById('globalBotStatus') && document.getElementById('globalBotStatus').addEventListener('change', function() {
-        var bs = loadBotStatus();
-        bs.global = this.value;
-        saveBotStatus(bs);
-        addLog('Bot status set to: ' + this.value, 'info', 'general');
-    });
+  }).catch(function(e) {
+    result.className = 'admin-result error';
+    result.textContent = 'Error: ' + e.message;
+  });
+}
 
-    /* ===== WEBSITE STATUS ===== */
-    function loadWebsiteStatusUI() {
-        var s = localStorage.getItem(WEBSITE_STATUS_KEY) || 'online';
-        var sel = document.getElementById('websiteStatusSelect');
-        if (sel) sel.value = s;
+// ===== BLACKLIST =====
+function manageBlacklist() {
+  var username = document.getElementById('blacklistUser');
+  var action = document.getElementById('blacklistAction');
+  var result = document.getElementById('blacklistResult');
+  if (!action || !result) return;
+  var u = username ? username.value.trim() : '';
+  var a = action.value;
+  
+  if (!u && a !== 'list') { result.className = 'admin-result error'; result.textContent = 'Enter a username'; return; }
+  
+  result.className = 'admin-result';
+  result.textContent = 'Processing...';
+  
+  adminApi('/admin/blacklist', { username: u, action: a }).then(function(d) {
+    if (d.success) {
+      A.blacklist = d.blacklist || [];
+      localStorage.setItem('gioai-blacklist', JSON.stringify(A.blacklist));
+      
+      if (a === 'add') {
+        result.className = 'admin-result success';
+        result.textContent = u + ' blacklisted';
+      } else if (a === 'remove') {
+        result.className = 'admin-result success';
+        result.textContent = u + ' removed from blacklist';
+      } else {
+        result.className = 'admin-result success';
+        result.textContent = 'Blacklisted: ' + (d.blacklist && d.blacklist.length ? d.blacklist.join(', ') : 'none');
+      }
+      loadBlacklist();
+    } else {
+      result.className = 'admin-result error';
+      result.textContent = d.error || 'Failed';
     }
-    document.getElementById('websiteStatusSelect') && document.getElementById('websiteStatusSelect').addEventListener('change', function() {
-        localStorage.setItem(WEBSITE_STATUS_KEY, this.value);
-        addLog('Website status set to: ' + this.value, 'info', 'general');
-    });
+  }).catch(function(e) {
+    result.className = 'admin-result error';
+    result.textContent = 'Error: ' + e.message;
+  });
+}
 
-    /* ===== LOG TABS ===== */
-    document.querySelectorAll('#logTabs .tab').forEach(function(tab) {
-        tab.addEventListener('click', function() {
-            document.querySelectorAll('#logTabs .tab').forEach(function(t) { t.classList.remove('active'); });
-            this.classList.add('active');
-            var filter = document.querySelector('#logTabs .tab.active');
-            var plat = document.querySelector('#logPlatformTabs .tab.active');
-            renderLogs(filter ? filter.dataset.filter : 'all', plat ? plat.dataset.platform : 'all');
-        });
-    });
-    document.querySelectorAll('#logPlatformTabs .tab').forEach(function(tab) {
-        tab.addEventListener('click', function() {
-            document.querySelectorAll('#logPlatformTabs .tab').forEach(function(t) { t.classList.remove('active'); });
-            this.classList.add('active');
-            var filter = document.querySelector('#logTabs .tab.active');
-            var plat = document.querySelector('#logPlatformTabs .tab.active');
-            renderLogs(filter ? filter.dataset.filter : 'all', plat ? plat.dataset.platform : 'all');
-        });
-    });
+function loadBlacklist() {
+  A.blacklist = JSON.parse(localStorage.getItem('gioai-blacklist') || '[]');
+  var el = document.getElementById('blacklistResult');
+  if (el && A.blacklist.length) {
+    el.className = 'admin-result success';
+    el.textContent = 'Blacklisted users: ' + A.blacklist.join(', ');
+  } else if (el) {
+    el.className = 'admin-result';
+    el.textContent = 'No users blacklisted';
+  }
+}
 
-    document.getElementById('clearLogsBtn') && document.getElementById('clearLogsBtn').addEventListener('click', function() {
-        if (confirm('Clear all activity logs?')) {
-            localStorage.removeItem(LOGS_KEY);
-            renderLogs('all', 'all');
-        }
+// ===== ANNOUNCEMENTS =====
+function sendAnnouncement() {
+  var msg = document.getElementById('announcementMsg');
+  var type = document.getElementById('announcementType');
+  var result = document.getElementById('announcementResult');
+  if (!msg || !type || !result) return;
+  var m = msg.value.trim();
+  var t = type.value;
+  
+  if (!m) { result.className = 'admin-result error'; result.textContent = 'Enter a message'; return; }
+  
+  result.className = 'admin-result';
+  result.textContent = 'Sending...';
+  
+  adminApi('/admin/announcement', { message: m, type: t }).then(function(d) {
+    if (d.success) {
+      result.className = 'admin-result success';
+      result.textContent = 'Announcement sent!';
+      msg.value = '';
+      // Save locally
+      A.announcements.unshift(d.announcement);
+      if (A.announcements.length > 50) A.announcements = A.announcements.slice(0, 50);
+      localStorage.setItem('gioai-announcements', JSON.stringify(A.announcements));
+      loadAnnouncements();
+    } else {
+      result.className = 'admin-result error';
+      result.textContent = d.error || 'Failed';
+    }
+  }).catch(function(e) {
+    result.className = 'admin-result error';
+    result.textContent = 'Error: ' + e.message;
+  });
+}
+
+function loadAnnouncements() {
+  A.announcements = JSON.parse(localStorage.getItem('gioai-announcements') || '[]');
+  var list = document.getElementById('announcementList');
+  if (!list) return;
+  if (!A.announcements.length) {
+    list.innerHTML = '<div class="empty-state">No announcements</div>';
+    return;
+  }
+  var html = '';
+  for (var i = 0; i < A.announcements.length; i++) {
+    var a = A.announcements[i];
+    html += '<div class="ann-item">' +
+      '<span class="ann-type ' + (a.type === 'warning' ? 'ann-warn' : a.type === 'error' ? 'ann-err' : 'ann-info') + '">' + a.type.toUpperCase() + '</span> ' +
+      a.message +
+      '<span class="ann-time">' + (a.timestamp ? new Date(a.timestamp).toLocaleString() : '') + '</span>' +
+      '</div>';
+  }
+  list.innerHTML = html;
+}
+
+// ===== PLATFORM STATUS =====
+function setPlatformStatus() {
+  var platform = document.getElementById('statusPlatform');
+  var status = document.getElementById('statusValue');
+  var result = document.getElementById('statusResult');
+  if (!platform || !status || !result) return;
+  
+  result.className = 'admin-result';
+  result.textContent = 'Updating...';
+  
+  adminApi('/admin/platform-status', { platform: platform.value, status: status.value }).then(function(d) {
+    if (d.success) {
+      result.className = 'admin-result success';
+      result.textContent = d.message || 'Updated';
+      checkAllPlatforms();
+    } else {
+      result.className = 'admin-result error';
+      result.textContent = d.error || 'Failed';
+    }
+  }).catch(function(e) {
+    result.className = 'admin-result error';
+    result.textContent = 'Error: ' + e.message;
+  });
+}
+
+function checkAllPlatforms() {
+  var el = document.getElementById('platformStatuses');
+  if (!el) return;
+  el.innerHTML = 'Checking...';
+  
+  var results = {};
+  var done = 0;
+  
+  function checkDone() {
+    done++;
+    if (done >= 3) {
+      var html = '';
+      var names = { languagenut: 'LanguageNut', seneca: 'Seneca', sparx: 'Sparx', worker: 'Worker' };
+      for (var p in results) {
+        var s = results[p];
+        html += '<div class="ps-row"><span class="ps-name">' + (names[p] || p) + ':</span>' +
+          '<span class="ps-indicator ' + (s === 'online' ? 'online' : s === 'offline' ? 'offline' : 'checking') + '">' + s + '</span></div>';
+      }
+      el.innerHTML = html || 'No data';
+    }
+  }
+  
+  // Check LanguageNut
+  fetch('https://api.languagenut.com/publicTranslationController/getTranslations', { signal: AbortSignal.timeout(5000) })
+    .then(function(r) { results.languagenut = r.ok ? 'online' : 'offline'; checkDone(); })
+    .catch(function() { results.languagenut = 'offline'; checkDone(); });
+  
+  // Check Worker
+  fetch(API_BASE + '/status', { signal: AbortSignal.timeout(5000) })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      results.worker = d.status === 'operational' ? 'online' : 'degraded';
+      if (d.platforms) {
+        results.seneca = d.platforms.seneca || 'unknown';
+        results.sparx = d.platforms.sparx || 'unknown';
+      }
+      checkDone(); checkDone(); checkDone();
+    })
+    .catch(function() {
+      results.worker = 'offline';
+      results.seneca = 'unknown';
+      results.sparx = 'unknown';
+      checkDone(); checkDone(); checkDone();
     });
+}
 
-    /* ===== ANNOUNCEMENTS ===== */
-    document.getElementById('postAnnounceBtn') && document.getElementById('postAnnounceBtn').addEventListener('click', function() {
-        var input = document.getElementById('announceInput');
-        var typeSelect = document.getElementById('announceTypeSelect');
-        var text = input ? input.value.trim() : '';
-        var type = typeSelect ? typeSelect.value : 'announcement';
-        if (!text) { alert('Enter announcement text'); return; }
-        try {
-            var ann = JSON.parse(localStorage.getItem(ANNOUNCEMENTS_KEY) || '[]');
-            ann.push({ text: text, time: new Date().toISOString(), type: type });
-            localStorage.setItem(ANNOUNCEMENTS_KEY, JSON.stringify(ann));
-            if (input) input.value = '';
-            renderAnnouncements();
-            // Reset notification seen so users see new ones
-            localStorage.removeItem('gioai-notif-seen');
-            addLog('Posted ' + type + ': ' + text.substring(0, 40), 'info', 'general');
-        } catch(e) {}
+// ===== STATUS REFRESH =====
+function refreshStatus() {
+  var el = document.getElementById('workerStatus');
+  if (!el) return;
+  el.innerHTML = 'Loading...';
+  
+  fetch(API_BASE + '/status', { signal: AbortSignal.timeout(5000) })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      var html = '<div class="status-grid">';
+      html += '<div class="stat-item"><span class="stat-label">Worker Status:</span><span class="stat-value ' + (d.status === 'operational' ? 'text-success' : 'text-warn') + '">' + d.status + '</span></div>';
+      html += '<div class="stat-item"><span class="stat-label">Uptime:</span><span class="stat-value">' + formatUptime(d.uptime || 0) + '</span></div>';
+      html += '<div class="stat-item"><span class="stat-label">Total Calls:</span><span class="stat-value">' + (d.totalCalls || 0) + '</span></div>';
+      html += '<div class="stat-item"><span class="stat-label">AI Calls:</span><span class="stat-value">' + (d.aiCalls || 0) + '</span></div>';
+      html += '<div class="stat-item"><span class="stat-label">Version:</span><span class="stat-value">' + (d.version || '?') + '</span></div>';
+      html += '</div>';
+      el.innerHTML = html;
+    })
+    .catch(function(e) {
+      el.innerHTML = '<div class="text-error">Connection error: ' + e.message + '</div>';
     });
+}
 
-    document.getElementById('clearAnnounceBtn') && document.getElementById('clearAnnounceBtn').addEventListener('click', function() {
-        if (confirm('Clear all announcements?')) {
-            localStorage.removeItem(ANNOUNCEMENTS_KEY);
-            localStorage.removeItem('gioai-notif-seen');
-            renderAnnouncements();
-            addLog('All announcements cleared', 'info', 'general');
-        }
-    });
+function formatUptime(s) {
+  if (s >= 86400) return Math.floor(s / 86400) + 'd ' + Math.floor((s % 86400) / 3600) + 'h';
+  if (s >= 3600) return Math.floor(s / 3600) + 'h ' + Math.floor((s % 3600) / 60) + 'm';
+  if (s >= 60) return Math.floor(s / 60) + 'm ' + (s % 60) + 's';
+  return s + 's';
+}
 
-    /* ===== BLACKLIST (ADD with PASSWORD) ===== */
-    document.getElementById('addBlacklistBtn') && document.getElementById('addBlacklistBtn').addEventListener('click', function() {
-        var input = document.getElementById('blacklistInput');
-        var passInput = document.getElementById('blacklistPassInput');
-        var platformSelect = document.getElementById('blacklistPlatformSelect');
-        var user = input ? input.value.trim().toLowerCase() : '';
-        var pass = passInput ? passInput.value.trim() : '';
-        var plat = platformSelect ? platformSelect.value : 'all';
-        if (!user) { alert('Enter username to blacklist'); return; }
-        try {
-            var list = loadBlacklist();
-            var existing = list.findIndex(function(item) { return item.username === user; });
-            if (existing >= 0) {
-                if (plat === 'all') { list[existing].platforms = ['all']; }
-                else {
-                    var p = list[existing].platforms || [];
-                    if (p.indexOf('all') < 0 && p.indexOf(plat) < 0) { p.push(plat); }
-                    list[existing].platforms = p;
-                }
-                if (pass) list[existing].password = pass;
-            } else {
-                var entry = { username: user, platforms: [plat] };
-                if (pass) entry.password = pass;
-                list.push(entry);
-            }
-            saveBlacklist(list);
-            if (input) input.value = '';
-            if (passInput) passInput.value = '';
-            renderBlacklist();
-            addLog('Blacklisted ' + user + ' on ' + (platformNames[plat] || plat) + (pass ? ' with password filter' : ''), 'warning', 'general');
-        } catch(e) {}
-    });
+// ===== TOAST =====
+function toast(msg, type) {
+  type = type || 'info';
+  var container = document.getElementById('toastContainer');
+  if (!container) return;
+  var el = document.createElement('div');
+  el.className = 'toast ' + type;
+  el.textContent = msg;
+  container.appendChild(el);
+  setTimeout(function() { el.style.opacity = '0'; el.style.transform = 'translateX(40px)'; el.style.transition = '0.3s ease'; }, 3000);
+  setTimeout(function() { el.remove(); }, 3500);
+}
 
-    /* ===== SAVED ACCOUNTS MANAGEMENT ===== */
-    document.getElementById('refreshAccountsBtn') && document.getElementById('refreshAccountsBtn').addEventListener('click', renderSavedAccounts);
-    document.getElementById('accountsPlatformSelect') && document.getElementById('accountsPlatformSelect').addEventListener('change', renderSavedAccounts);
+// ===== SHA-256 =====
+function sha256(str) {
+  // Simple SHA-256 implementation using Web Crypto API
+  var buffer = new TextEncoder().encode(str);
+  return crypto.subtle.digest('SHA-256', buffer).then(function(hash) {
+    return Array.from(new Uint8Array(hash)).map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
+  });
+}
 
-    /* ===== INCREASE ACCOUNT USES ===== */
-    document.getElementById('increaseUsesBtn') && document.getElementById('increaseUsesBtn').addEventListener('click', function() {
-        var plat = document.getElementById('increasePlatformSelect');
-        var userInput = document.getElementById('increaseUsernameInput');
-        var amountInput = document.getElementById('increaseAmountInput');
-        var resultEl = document.getElementById('increaseResult');
-        if (!plat || !userInput || !amountInput || !resultEl) return;
-        var platform = plat.value;
-        var username = userInput.value.trim();
-        var amount = parseInt(amountInput.value) || 1;
-        if (!username) { alert('Enter username'); return; }
-        var accounts = getSavedAccounts(platform);
-        var found = false;
-        for (var i = 0; i < accounts.length; i++) {
-            if (accounts[i].username === username) {
-                accounts[i].uses = (accounts[i].uses || 0) + amount;
-                found = true;
-                break;
-            }
-        }
-        if (!found) {
-            resultEl.style.display = 'block';
-            resultEl.style.color = 'var(--danger)';
-            resultEl.textContent = 'Account "' + username + '" not found on ' + platformNames[platform];
-            return;
-        }
-        saveSavedAccounts(platform, accounts);
-        resultEl.style.display = 'block';
-        resultEl.style.color = 'var(--success)';
-        resultEl.textContent = 'Added ' + amount + ' uses to ' + username + ' on ' + platformNames[platform] + ' (total: ' + accounts.find(function(a) { return a.username === username; }).uses + ')';
-        addLog('Increased uses for ' + username + ' on ' + platform + ' by ' + amount, 'info', 'general');
-        userInput.value = '';
-        renderSavedAccounts();
-    });
+// ===== INIT =====
+document.addEventListener('DOMContentLoaded', adminInit);
 
-    /* ===== INIT ===== */
-    window.addEventListener('storage', function(e) {
-        if (e.key === STATS_KEY || e.key === LOGS_KEY) {
-            updateStats();
-            var filter = document.querySelector('#logTabs .tab.active');
-            var plat = document.querySelector('#logPlatformTabs .tab.active');
-            renderLogs(filter ? filter.dataset.filter : 'all', plat ? plat.dataset.platform : 'all');
-        }
-    });
-
-    updateTimestamp();
-    setInterval(function() {
-        updateStats();
-        updateTimestamp();
-    }, 10000);
-})();
 
