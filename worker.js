@@ -43,6 +43,15 @@ addEventListener('fetch',function(event){
     if(url.searchParams.has('url')){var target=url.searchParams.get('url');var body=r.method==='POST'?await r.text():null;var h={};r.headers.forEach(function(v,k){h[k]=v});var f=await fetch(target,{method:r.method,headers:h,body:body});var rh={...CORS};f.headers.forEach(function(v,k){if(!['set-cookie','access-control-allow-origin'].includes(k.toLowerCase()))rh[k]=v});return new Response(await f.text(),{status:f.status,headers:rh})}
     try{
 
+    // ===== STATIC FILE PROXY (serve UI from GitHub Pages) =====
+    if(!path.startsWith('/api/')&&!url.searchParams.has('url')){
+      var ghPath=path==='/'?'/index.html':path;
+      var ghResp=await fetch('https://giannineedshelp.github.io'+ghPath);
+      if(ghResp.ok){
+        var ghBody=await ghResp.text();
+        var ghHeaders={'Access-Control-Allow-Origin':'*','Content-Type':ghResp.headers.get('Content-Type')||'text/html'};
+        return new Response(ghBody,{status:200,headers:ghHeaders})}}
+
     // ===== SPARX SCHOOL SEARCH =====
     if(path==='/api/sparx/search-school'&&r.method==='POST'){var b=await r.json();if(!b.query)return json({error:'query required'},400);
       var raw=await(await fetch('https://static.sparx-learning.com/sl/spx001/data.txt')).text();var schools=JSON.parse(atob(raw));
@@ -138,6 +147,7 @@ addEventListener('fetch',function(event){
     return json({error:'Not found',path:path},404)}catch(e){return json({error:e.message},500)}}
   )(event.request))
 });
+
 
 
 
