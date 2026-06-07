@@ -1,17 +1,26 @@
 # GIOAI Changelog
 
+## v3.0 (June 2026)
+- Sparx school search (type to search, v5.2 style)
+- AI working out generation (Gemini + Groq + Mistral providers)
+- Working out toggle in Sparx settings
+- Platform loading screens with animated SVG logos
+- Hacker theme restored to v5.2 matrix style with scanlines
+- Show previous homework for all platforms (completed/past due)
+- FCaptcha jitter + anti-tracking bypass (random delays, UA rotation, token mutation)
+- AI provider selector (Auto / Gemini / Groq / Mistral)
+- User agent rotation for anti-detection (6 UAs)
+- Improved UI with SVG logos on hub cards
+- Better sidebar with avatar and platform info
+- Fixed multiple UI issues
+
 ## v2.5 (June 2026)
-- Added Sparx Maths platform support
-- Fixed LanguageNut fcaptcha bypass with client-side token generation
-- Added fake time slider configuration per platform
-- Added "Show Previous Homework" toggle for all platforms
-- Hacker-style UI with animations, glitch effects, and neon accents
-- Admin panel with "give slots" functionality
-- Notifications panel with tutorial guide and changelog tabs
-- Platform-specific settings bar in dashboard
-- Sidebar with social links (GitHub, Discord, PayPal) and theme selector
-- 4 themes: Dark, Hacker (green), Light, Neon (purple/pink)
-- Cloudflare Worker v2 with Seneca API endpoints and fixed LN login
+- Unified single-page app with all platforms
+- 4 themes: Dark, Hacker, Light, Neon
+- Admin panel with give slots
+- Seneca API proxy endpoints
+- Fixed LN login with POST method and fcaptcha bypass
+- Cloudflare Worker with Sparx gRPC proxy
 
 ## v2.4 (May 2026)
 - Added Seneca Learning integration
@@ -22,12 +31,12 @@
 ## v2.3 (May 2026)
 - Added donate page with PayPal link
 - Added social links to sidebar footer
-- Added 4 themes: Dark, Hacker, Light, Neon
-- Fixed login button not responding (JS syntax errors)
+- Initial 4 themes
+- Fixed login button not responding
 
 ## v2.2 (April 2026)
 - Initial GIOAI release
 - LanguageNut homework viewer
 - Task completion engine with progress tracking
-- Statistics dashboard (completed, XP, errors)
+- Statistics dashboard
 

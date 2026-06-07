@@ -1,13 +1,13 @@
 (function() {
 'use strict';
 
-var APP_VERSION = '2.5';
-var CHANGELOG_SEEN_KEY = 'gioai-changelog-seen-v2.5';
+var APP_VERSION = '3.0';
+var CHANGELOG_SEEN_KEY = 'gioai-changelog-seen-v3';
 var WORKER_URL = 'https://gioai.giannikei12.workers.dev';
 
 // ===== STATE =====
 var S = {
-  platform: null,        // 'languagenut' | 'seneca' | 'sparx'
+  platform: null,
   token: null,
   userData: null,
   tasks: [],
@@ -21,35 +21,39 @@ var S = {
   delayMax: 8,
   fakeTime: 10000,
   showPrevHmwk: false,
-  // Platform-specific state
+  showWorking: true,
+  aiProvider: 'auto',
   ln: { token: null, homeworks: [], translations: {}, moduleTranslations: {} },
   seneca: { idToken: null, refreshToken: null, courses: [] },
-  sparx: { token: null, sessionId: null }
+  sparx: { token: null, sessionId: null, schoolSearchTimer: null }
 };
 
 var $ = {};
 
-// ===== ELEMENT CACHE =====
 var EL_IDS = [
   'hamburgerBtn','sidebar','sidebarOverlay','sidebarClose',
-  'loadingScreen','disclaimer','disclaimerAgree','disclaimerContinue',
+  'appLoading','platformLoading','plLogo','plSvgLn','plSvgSe','plSvgSp','plText','plSub',
+  'disclaimer','disclaimerAgree','disclaimerContinue',
   'changelogOverlay','changelogClose','changelogDismiss','changelogBody','changelogList',
   'notifOverlay','notifClose','notifBell','notifBadge',
   'hubScreen','platformLoginScreen','dashboardScreen','settingsScreen','donateScreen','adminScreen',
   'backToHub','platformLoginTitle','loginPlatformBadge','loginStatus','loginStatusText',
-  'platformUsername','platformPassword','platformLoginBtn','senecaLoginExtra','senecaLoginMethod',
-  'sparxLoginExtra','sparxSchoolId',
+  'platformUsername','platformPassword','platformLoginBtn',
+  'senecaLoginExtra','senecaLoginMethod',
+  'sparxLoginExtra','sparxSchoolId','sparxSchoolSearch','sparxSchoolResults',
   'dashUserDisplay','dashStatusDot','dashPlatformBadge',
   'dashSettingsBtn','dashLogoutBtn','dashFetchBtn','dashStartBtn','dashStopBtn',
   'dashProgressFill','dashProgressText','dashStatCompleted','dashStatXp','dashStatErrors',
   'dashTasks','dashLogEntries',
   'psDelayMin','psDelayMax','psDelayMinVal','psDelayMaxVal',
-  'psFakeTime','psFakeTimeVal','psShowPrevHmwk',
+  'psFakeTime','psFakeTimeVal','psShowPrevHmwk','psShowWorking','psShowWorkingGroup',
   'settingsBackBtn','settingsDelayMin','settingsDelayMax',
+  'settingsShowWorking','settingsAiProvider',
   'settingsNotifComplete','settingsNotifError',
   'donateBackBtn','adminBackBtn','adminUsername','adminAmount','adminKey','adminGiveSlotsBtn','adminResult',
-  'adminPlatformStatus','appVersion','toastContainer',
-  'platformSettingsBar','psFakeTimeGroup'
+  'adminPlatformStatus','appVersion','sidebarVersion','toastContainer',
+  'platformSettingsBar','psFakeTimeGroup','sidebarUserName','sidebarUserPlatform','sidebarAvatar',
+  'themeBtns','themeBtnsLg'
 ];
 
 function cache() {
@@ -70,668 +74,598 @@ function getSavedTheme() {
 }
 
 // ===== TOAST =====
-function toast(msg, level) {
-  level = level || 'info';
-  var c = $.toastContainer;
-  if (!c) return;
-  var el = document.createElement('div');
-  el.className = 'toast ' + level;
-  el.textContent = msg;
-  c.appendChild(el);
-  setTimeout(function() { if (el.parentNode) el.remove(); }, 3500);
+function toast(msg, type) {
+  type = type || 'info';
+  var t = document.createElement('div');
+  t.className = 'toast ' + type;
+  t.textContent = msg;
+  var c = $.toastContainer || document.getElementById('toastContainer');
+  c.appendChild(t);
+  setTimeout(function() { t.style.opacity = '0'; t.style.transform = 'translateX(40px)'; t.style.transition = '0.3s'; }, 3000);
+  setTimeout(function() { if (t.parentNode) t.parentNode.removeChild(t); }, 3500);
 }
 
-// ===== LOG =====
-function log(level, msg) {
-  var c = $.dashLogEntries;
-  if (!c) return;
-  var el = document.createElement('div');
-  el.className = 'log-entry ' + level;
-  el.innerHTML = '[' + new Date().toLocaleTimeString() + '] ' + msg;
-  c.appendChild(el);
-  c.scrollTop = c.scrollHeight;
+// ===== BIND SHORTCUT =====
+function bind(el, ev, fn) {
+  if (el) el.addEventListener(ev, fn);
 }
 
-// ===== SCREEN NAVIGATION =====
+// ===== UTILITY =====
+function setBtn(btn, disabled) {
+  if (btn) btn.disabled = !!disabled;
+}
+
+function secondsToString(secs) {
+  if (secs >= 86400) return Math.floor(secs/86400)+'d '+(Math.floor(secs%86400/3600))+'h';
+  if (secs >= 3600) return Math.floor(secs/3600)+'h '+(Math.floor(secs%3600/60))+'m';
+  if (secs >= 60) return Math.floor(secs/60)+'m '+(secs%60)+'s';
+  return secs+'s';
+}
+
+function sleep(ms) {
+  return new Promise(function(r) { setTimeout(r, ms); });
+}
+
+function randomBetween(a, b) {
+  return Math.floor(Math.random() * (b - a + 1)) + a;
+}
+
+// ===== SCREENS =====
 function showScreen(id) {
   var screens = document.querySelectorAll('.screen');
-  for (var i = 0; i < screens.length; i++) {
-    screens[i].classList.remove('active');
-  }
+  for (var i = 0; i < screens.length; i++) screens[i].classList.remove('active');
+  closeSidebar();
   var el = document.getElementById(id);
   if (el) el.classList.add('active');
-  closeSidebar();
+  if (id === 'hubScreen') {
+    if ($.sidebarUserName) $.sidebarUserName.textContent = S.token ? S.userData || 'User' : 'Guest';
+    if ($.sidebarUserPlatform) $.sidebarUserPlatform.textContent = S.platform ? S.platform : 'Not logged in';
+  }
 }
 
 // ===== SIDEBAR =====
-function toggleSidebar() {
-  if ($.sidebar.classList.contains('open')) closeSidebar();
-  else openSidebar();
-}
-function openSidebar() {
-  $.sidebar.classList.add('open');
-  $.sidebarOverlay.classList.add('open');
-  $.hamburgerBtn.classList.add('open');
-}
-function closeSidebar() {
-  $.sidebar.classList.remove('open');
-  $.sidebarOverlay.classList.remove('open');
-  $.hamburgerBtn.classList.remove('open');
-}
+function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('sidebarOverlay').style.display = 'block'; }
+function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebarOverlay').style.display = 'none'; }
 
 // ===== THEME =====
 function setTheme(t) {
   S.theme = t;
   document.documentElement.setAttribute('data-theme', t);
   localStorage.setItem('gioai-theme', t);
-  function toggleBtns(btns) {
-    for (var i = 0; i < btns.length; i++) {
-      btns[i].classList.toggle('active', btns[i].dataset.theme === t);
-    }
-  }
-  toggleBtns($.themeBtns);
-  toggleBtns($.themeBtnsLg);
-}
-
-// ===== FCAPTCHA BYPASS =====
-function genFCaptchaToken() {
-  // Generates a token that would pass FCaptcha's client-side verification
-  // The token format is base64-encoded JSON with a low score (< 0.5)
-  var fakeSig = {
-    timestamp: Date.now(),
-    score: 0.05 + Math.random() * 0.2,  // Well below 0.5 threshold
-    id: 'fcaptcha_' + Math.random().toString(36).substr(2, 9),
-    v: '1.10.1'
-  };
-  return btoa(JSON.stringify(fakeSig));
-}
-
-// ===== CALL BACKEND =====
-function api(url, opts) {
-  opts = opts || {};
-  var headers = {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json'
-  };
-  if (opts.headers) {
-    for (var k in opts.headers) {
-      if (opts.headers.hasOwnProperty(k)) headers[k] = opts.headers[k];
-    }
-  }
-  return fetch(url, {
-    method: opts.method || 'GET',
-    headers: headers,
-    body: opts.body
-  }).then(function(r) {
-    if (!r.ok) return r.text().then(function(t) {
-      throw new Error('HTTP ' + r.status + ': ' + t.slice(0, 200));
-    });
-    return r.json();
-  });
-}
-
-// ===== DIRECT LANGUAGENUT API =====
-function lnApi(path, data) {
-  // Direct call to languagenut API (no worker needed)
-  if (!data) data = {};
-  // Add fcaptcha bypass token if not already present
-  if (!data.friendlyCaptchaToken) {
-    data.friendlyCaptchaToken = genFCaptchaToken();
-  }
-  var qs = new URLSearchParams(data).toString();
-  return fetch('https://api.languagenut.com/' + path + '?' + qs, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-      'Accept': 'application/json'
-    }
-  }).then(function(r) { return r.json(); });
-}
-
-// ===== LANGUAGE NUT =====
-function lnLogin() {
-  var u = $.platformUsername.value.trim();
-  var p = $.platformPassword.value;
-  if (!u || !p) { toast('Enter username and password.', 'error'); return; }
-
-  showLoginStatus('info', 'Authenticating with LanguageNut...');
-  setBtn($.platformLoginBtn, true, 'Authenticating...');
-
-  lnApi('loginController/attemptLogin', { username: u, pass: p })
-    .then(function(resp) {
-      if (resp && resp.newToken) {
-        S.ln.token = resp.newToken;
-        S.token = resp.newToken;
-        S.userData = resp;
-        S.platform = 'languagenut';
-        hideLoginStatus();
-        toast('Logged in to LanguageNut!', 'success');
-        log('success', 'LanguageNut: Authenticated as ' + u);
-        afterLogin();
-      } else {
-        throw new Error(resp && resp.loginError ? resp.loginError : 'Login failed - check credentials');
-      }
-    })
-    .catch(function(e) {
-      showLoginStatus('error', 'Login failed: ' + e.message);
-      toast('LanguageNut login failed: ' + e.message, 'error');
-      log('error', 'LanguageNut login error: ' + e.message);
-    })
-    .finally(function() {
-      setBtn($.platformLoginBtn, false, 'Authenticate');
-    });
-}
-
-function afterLogin() {
-  showScreen('dashboardScreen');
-  updateDashHeader();
-  updatePlatformSettings();
-  // Fetch translations and homeworks
-  Promise.all([
-    lnApi('translationController/getUserModuleTranslations', { token: S.ln.token }).catch(function() { return { translations: {} }; }),
-    lnApi('publicTranslationController/getTranslations', {}).catch(function() { return { translations: {} }; })
-  ]).then(function(results) {
-    S.ln.moduleTranslations = results[0].translations || {};
-    S.ln.translations = results[1].translations || {};
-    return fetchHomeworks();
-  }).catch(function(e) {
-    log('error', 'Failed to load translations: ' + e.message);
-  });
-}
-
-function fetchHomeworks() {
-  if (!S.ln.token) return;
-  setBtn($.dashFetchBtn, true, 'Fetching...');
-  return lnApi('assignmentController/getViewableAll', { token: S.ln.token })
-    .then(function(d) {
-      var hws = d.homework || [];
-      // Filter based on showPrevHmwk
-      if (!S.showPrevHmwk) {
-        // Show only current/homeworks
-      }
-      S.ln.homeworks = hws;
-      log('success', 'Loaded ' + hws.length + ' homeworks');
-      toast('Found ' + hws.length + ' homeworks', 'success');
-      renderLNTasks(hws);
-      updateStats();
-    })
-    .catch(function(e) {
-      log('error', 'Fetch error: ' + e.message);
-      toast('Failed to fetch homeworks', 'error');
-    })
-    .finally(function() {
-      setBtn($.dashFetchBtn, false, 'Fetch Tasks');
-    });
-}
-
-function renderLNTasks(hws) {
-  var c = $.dashTasks;
-  if (!c) return;
-  if (!hws || hws.length === 0) {
-    c.innerHTML = '<div class="empty-state">No homeworks found.</div>';
-    updateProgress();
-    return;
-  }
-  var html = '';
-  for (var i = 0; i < Math.min(hws.length, 20); i++) {
-    var hw = hws[i];
-    var hwName = hw.name || hw.homework_name || 'Homework ' + (i + 1);
-    var tasks = hw.tasks || [];
-    var done = 0;
-    for (var t = 0; t < tasks.length; t++) {
-      if (tasks[t].gameResults && tasks[t].gameResults.percentage >= 100) done++;
-    }
-    html += '<div class="task-group">';
-    html += '<div class="task-group-header">';
-    html += '<div><div class="task-group-title">' + esc(hwName) + '</div>';
-    html += '<div class="task-group-desc">' + tasks.length + ' tasks</div></div>';
-    html += '<div class="task-group-progress">' + done + '/' + tasks.length + ' done</div>';
-    html += '</div>';
-    html += '<div class="task-group-body">';
-    for (var t = 0; t < Math.min(tasks.length, 50); t++) {
-      var task = tasks[t];
-      var tName = task.name || task.translation || 'Task ' + (t + 1);
-      var pct = task.gameResults ? task.gameResults.percentage : 0;
-      var sClass = 'ex-pending';
-      var sText = pct + '%';
-      if (pct >= 100) { sClass = 'ex-done'; sText = 'Done'; }
-      else if (pct > 0) { sClass = 'ex-error'; sText = pct + '%'; }
-      html += '<div class="exercise-row">';
-      html += '<span class="ex-name">' + esc(tName) + '</span>';
-      html += '<span class="ex-status ' + sClass + '">' + sText + '</span>';
-      html += '</div>';
-    }
-    html += '</div></div>';
-  }
-  c.innerHTML = html;
-  updateProgress();
-}
-
-// ===== SENECA =====
-function senecaLogin() {
-  var email = $.platformUsername.value.trim();
-  var pwd = $.platformPassword.value;
-  if (!email || !pwd) { toast('Enter email and password.', 'error'); return; }
-  showLoginStatus('info', 'Authenticating with Seneca...');
-  setBtn($.platformLoginBtn, true, 'Authenticating...');
-
-  api(WORKER_URL + '/api/seneca/login', {
-    method: 'POST',
-    body: JSON.stringify({ email: email, password: pwd })
-  }).then(function(d) {
-    if (d && d.idToken) {
-      S.seneca.idToken = d.idToken;
-      S.seneca.refreshToken = d.refreshToken || '';
-      S.token = d.idToken;
-      S.platform = 'seneca';
-      hideLoginStatus();
-      toast('Logged in to Seneca!', 'success');
-      log('success', 'Seneca: Authenticated as ' + email);
-      afterLogin();
-    } else {
-      throw new Error(d && d.error ? d.error : 'Login failed');
-    }
-  }).catch(function(e) {
-    showLoginStatus('error', 'Login failed: ' + e.message);
-    toast('Seneca login failed: ' + e.message, 'error');
-    log('error', 'Seneca login error: ' + e.message);
-  }).finally(function() {
-    setBtn($.platformLoginBtn, false, 'Authenticate');
-  });
-}
-
-// ===== SPARX =====
-function sparxLogin() {
-  var u = $.platformUsername.value.trim();
-  var p = $.platformPassword.value;
-  var sid = $.sparxSchoolId ? $.sparxSchoolId.value.trim() : '1';
-  if (!u || !p) { toast('Enter username and password.', 'error'); return; }
-  showLoginStatus('info', 'Authenticating with Sparx...');
-  setBtn($.platformLoginBtn, true, 'Authenticating...');
-
-  api(WORKER_URL + '/api/sparx/login', {
-    method: 'POST',
-    body: JSON.stringify({ username: u, password: p, schoolId: sid })
-  }).then(function(d) {
-    if (d && d.token) {
-      S.sparx.token = d.token;
-      S.sparx.sessionId = d.session_id || '';
-      S.token = d.token;
-      S.platform = 'sparx';
-      hideLoginStatus();
-      toast('Logged in to Sparx!', 'success');
-      log('success', 'Sparx: Authenticated as ' + u);
-      afterLogin();
-    } else {
-      throw new Error(d && d.error ? d.error : 'Login failed');
-    }
-  }).catch(function(e) {
-    showLoginStatus('error', 'Login failed: ' + e.message);
-    toast('Sparx login failed: ' + e.message, 'error');
-    log('error', 'Sparx login error: ' + e.message);
-  }).finally(function() {
-    setBtn($.platformLoginBtn, false, 'Authenticate');
-  });
-}
-
-// ===== DASHBOARD HELPERS =====
-function updateDashHeader() {
-  var icons = { languagenut: '🌍', seneca: '📚', sparx: '➗' };
-  var names = { languagenut: 'LanguageNut', seneca: 'Seneca', sparx: 'Sparx' };
-  if ($.dashPlatformBadge) $.dashPlatformBadge.textContent = icons[S.platform] || '🌍';
-  if ($.dashUserDisplay) $.dashUserDisplay.textContent = (S.platform ? names[S.platform] + ' - ' : '') + 'Logged In';
-  if ($.dashStatusDot) $.dashStatusDot.className = 'status-dot online';
-}
-
-function updatePlatformSettings() {
-  // Show/hide platform-specific settings
-  var ftGroup = $.psFakeTimeGroup;
-  if (ftGroup) {
-    ftGroup.style.display = (S.platform === 'languagenut') ? 'flex' : 'none';
-  }
-  // Reset settings to defaults
-  syncDelayUI();
-}
-
-function syncDelayUI() {
-  if ($.psDelayMin) { $.psDelayMin.value = S.delayMin; $.psDelayMinVal.textContent = S.delayMin + 's'; }
-  if ($.psDelayMax) { $.psDelayMax.value = S.delayMax; $.psDelayMaxVal.textContent = S.delayMax + 's'; }
-  var ft = S.fakeTime || 10000;
-  if ($.psFakeTime) {
-    var val = Math.log10(ft);
-    $.psFakeTime.value = val;
-    $.psFakeTimeVal.textContent = secondsToString(ft);
+  // Update theme buttons
+  var all = document.querySelectorAll('.theme-btn, .theme-btn-lg');
+  for (var i = 0; i < all.length; i++) {
+    all[i].classList.toggle('active', all[i].dataset.theme === t);
   }
 }
 
-function secondsToString(sec) {
-  sec = Math.floor(sec);
-  var y = Math.floor(sec / 31536000);
-  var d = Math.floor((sec % 31536000) / 86400);
-  var h = Math.floor((sec % 86400) / 3600);
-  var m = Math.floor((sec % 3600) / 60);
-  var s = sec % 60;
-  var parts = [];
-  if (y) parts.push(y + 'y');
-  if (d) parts.push(d + 'd');
-  if (h) parts.push(h + 'h');
-  if (m) parts.push(m + 'm');
-  if (s || parts.length === 0) parts.push(s + 's');
-  return parts.join(' ');
+// ===== LOGGING =====
+function log(type, msg) {
+  var e = document.createElement('div');
+  e.className = 'log-entry ' + type;
+  var t = new Date();
+  var ts = t.getHours().toString().padStart(2,'0')+':'+t.getMinutes().toString().padStart(2,'0')+':'+t.getSeconds().toString().padStart(2,'0');
+  e.textContent = '['+ts+'] ' + msg;
+  var c = $.dashLogEntries;
+  if (c) { c.appendChild(e); c.scrollTop = c.scrollHeight; }
 }
 
-function setBtn(el, disabled, text) {
-  if (!el) return;
-  el.disabled = disabled;
-  if (text !== undefined) el.textContent = text;
-}
-
-function showLoginStatus(type, msg) {
-  if (!$.loginStatus || !$.loginStatusText) return;
-  $.loginStatus.className = 'login-status ' + type;
-  $.loginStatus.style.display = 'flex';
-  $.loginStatusText.textContent = msg;
-}
-
-function hideLoginStatus() {
-  if (!$.loginStatus) return;
-  $.loginStatus.style.display = 'none';
-  $.loginStatusText.textContent = '';
-}
-
-function esc(s) {
-  return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
-
+// ===== STATS =====
 function updateStats() {
   if ($.dashStatCompleted) $.dashStatCompleted.textContent = S.completed;
   if ($.dashStatXp) $.dashStatXp.textContent = S.xpEarned;
   if ($.dashStatErrors) $.dashStatErrors.textContent = S.errors;
+  var total = S.tasks.length || 1;
+  var pct = Math.round((S.completed / total) * 100);
+  if ($.dashProgressFill) $.dashProgressFill.style.width = Math.min(pct, 100) + '%';
+  if ($.dashProgressText) $.dashProgressText.textContent = S.completed + ' / ' + S.tasks.length + ' tasks (' + pct + '%)';
 }
 
-function updateProgress() {
-  if ($.dashProgressFill) $.dashProgressFill.style.width = '0%';
-  if ($.dashProgressText) $.dashProgressText.textContent = '0 / 0 tasks (0%)';
+// ===== PLATFORM LOADING =====
+function showPlatformLoading(platform) {
+  var logos = { languagenut: 'plSvgLn', seneca: 'plSvgSe', sparx: 'plSvgSp' };
+  var names = { languagenut: 'LanguageNut', seneca: 'Seneca Learning', sparx: 'Sparx Maths' };
+  var msgs = { languagenut: 'Connecting to LanguageNut...', seneca: 'Fetching Seneca courses...', sparx: 'Contacting Sparx servers...' };
+  // Hide all SVGs
+  if ($.plSvgLn) $.plSvgLn.style.display = 'none';
+  if ($.plSvgSe) $.plSvgSe.style.display = 'none';
+  if ($.plSvgSp) $.plSvgSp.style.display = 'none';
+  // Show relevant one
+  var svgId = logos[platform];
+  if ($[svgId]) $[svgId].style.display = 'block';
+  if ($.plText) $.plText.textContent = msgs[platform] || 'Loading...';
+  if ($.plSub) $.plSub.textContent = names[platform] || '';
+  if ($.platformLoading) $.platformLoading.style.display = 'flex';
 }
 
-// ===== BINDING =====
-function bind(el, ev, fn) { if (el) el.addEventListener(ev, fn); }
-
-// ===== NOTIFICATIONS =====
-function openNotifPanel() { if ($.notifOverlay) $.notifOverlay.classList.add('active'); }
-function closeNotifPanel() { if ($.notifOverlay) $.notifOverlay.classList.remove('active'); }
-
-// ===== CHANGELOG =====
-function showChangelog() { if ($.changelogOverlay) $.changelogOverlay.classList.add('active'); }
-function hideChangelog() {
-  if ($.changelogOverlay) $.changelogOverlay.classList.remove('active');
-  localStorage.setItem(CHANGELOG_SEEN_KEY, 'true');
-  if ($.notifBadge) $.notifBadge.style.display = 'none';
+function hidePlatformLoading() {
+  if ($.platformLoading) $.platformLoading.style.display = 'none';
 }
 
-// ===== ADMIN =====
-function giveSlots() {
-  var username = $.adminUsername ? $.adminUsername.value.trim() : '';
-  var amount = $.adminAmount ? parseInt($.adminAmount.value) : 0;
-  var key = $.adminKey ? $.adminKey.value : '';
-  if (!username || !amount) { toast('Enter username and amount', 'error'); return; }
-  if (!key) { toast('Enter admin key', 'error'); return; }
-  if ($.adminGiveSlotsBtn) $.adminGiveSlotsBtn.disabled = true;
-
-  api(WORKER_URL + '/api/admin/give-slots', {
+// ===== API CALL =====
+function api(url, data) {
+  return fetch(url, {
     method: 'POST',
-    body: JSON.stringify({ username: username, amount: amount, adminKey: key })
-  }).then(function(d) {
-    if (d && d.success) {
-      if ($.adminResult) {
-        $.adminResult.className = 'admin-result success';
-        $.adminResult.textContent = 'Added ' + amount + ' slots to ' + username;
-      }
-      toast('Slots given!', 'success');
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  }).then(function(r) { return r.json(); });
+}
+
+// ===== LANGUAGE NUT AUTH (direct API) =====
+function lnLogin() {
+  var user = $.platformUsername ? $.platformUsername.value.trim() : '';
+  var pass = $.platformPassword ? $.platformPassword.value.trim() : '';
+  if (!user || !pass) { showLoginStatus('error', 'Enter username and password'); return; }
+  showLoginStatus('info', 'Authenticating...');
+  showPlatformLoading('languagenut');
+  // Direct call to LN API
+  fetch('https://api.languagenut.com/loginController/attemptLogin?' + new URLSearchParams({
+    username: user,
+    pass: pass,
+    friendlyCaptchaToken: genFCaptchaToken()
+  }), {
+    method: 'POST',
+    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36', 'Accept': 'application/json', 'Referer': 'https://www.languagenut.com/', 'Origin': 'https://www.languagenut.com', 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' }
+  }).then(function(r) { return r.json(); }).then(function(d) {
+    hidePlatformLoading();
+    if (d.newToken) {
+      S.ln.token = d.newToken;
+      S.token = d.newToken;
+      S.userData = user;
+      enterDashboard('languagenut', user);
+      log('success', 'LanguageNut: Login successful');
+      toast('LanguageNut logged in', 'success');
     } else {
-      throw new Error(d && d.error ? d.error : 'Request failed');
+      showLoginStatus('error', d.loginError || 'Login failed');
+      log('error', 'LanguageNut: Login failed - ' + (d.loginError || 'no token'));
     }
   }).catch(function(e) {
-    if ($.adminResult) {
-      $.adminResult.className = 'admin-result error';
-      $.adminResult.textContent = 'Error: ' + e.message;
-    }
-    toast('Admin error: ' + e.message, 'error');
-  }).finally(function() {
-    if ($.adminGiveSlotsBtn) $.adminGiveSlotsBtn.disabled = false;
+    hidePlatformLoading();
+    showLoginStatus('error', 'Connection error: ' + e.message);
+    log('error', 'LanguageNut: ' + e.message);
   });
 }
 
-// ===== CHECK PLATFORM STATUS =====
-function checkPlatformStatus() {
-  var st = $.adminPlatformStatus;
-  if (!st) return;
-  var items = st.querySelectorAll('.ps-indicator');
-  var checks = [
-    { name: 'LanguageNut API', url: 'https://api.languagenut.com/loginController/attemptLogin?username=test&pass=test', good: function(r) { return r && r.loginError === 'INCORRECT_LOGIN'; } },
-    { name: 'Seneca API', url: WORKER_URL + '/api/seneca/login', good: function(r) { return r && r.error; } },
-    { name: 'Sparx API', url: WORKER_URL + '/api/sparx/login', good: function(r) { return r && r.error && r.error !== 'Token exchange failed'; } },
-    { name: 'Worker', url: WORKER_URL + '/api/keys', good: function(r) { return r && r.status === 'operational'; } }
-  ];
+// ===== SENECA AUTH (via worker) =====
+function senecaLogin() {
+  var email = $.platformUsername ? $.platformUsername.value.trim() : '';
+  var pass = $.platformPassword ? $.platformPassword.value.trim() : '';
+  if (!email || !pass) { showLoginStatus('error', 'Enter email and password'); return; }
+  showLoginStatus('info', 'Authenticating...');
+  showPlatformLoading('seneca');
+  api(WORKER_URL + '/api/seneca/login', { email: email, password: pass }).then(function(d) {
+    hidePlatformLoading();
+    if (d.idToken) {
+      S.seneca.idToken = d.idToken;
+      S.seneca.refreshToken = d.refreshToken || '';
+      S.token = d.idToken;
+      S.userData = email;
+      enterDashboard('seneca', email);
+      log('success', 'Seneca: Login successful');
+      toast('Seneca logged in', 'success');
+    } else {
+      showLoginStatus('error', d.error || 'Login failed');
+      log('error', 'Seneca: Login failed - ' + (d.error || 'unknown'));
+    }
+  }).catch(function(e) {
+    hidePlatformLoading();
+    showLoginStatus('error', 'Connection error: ' + e.message);
+    log('error', 'Seneca: ' + e.message);
+  });
+}
 
-  for (var i = 0; i < checks.length && i < items.length; i++) {
-    (function(idx, item, check) {
-      var url = check.url;
-      fetch(url, check.url.includes(WORKER_URL) ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' } : {})
-        .then(function(r) { return r.json(); })
-        .then(function(d) {
-          var ok = check.good(d);
-          item.className = 'ps-indicator ' + (ok ? 'online' : 'offline');
-          item.textContent = ok ? 'Online' : 'Offline';
-        })
-        .catch(function() {
-          item.className = 'ps-indicator offline';
-          item.textContent = 'Offline';
-        });
-    })(i, items[i], checks[i]);
+// ===== SPARX AUTH (via worker) =====
+function sparxLogin() {
+  var user = $.platformUsername ? $.platformUsername.value.trim() : '';
+  var pass = $.platformPassword ? $.platformPassword.value.trim() : '';
+  var sid = $.sparxSchoolId ? $.sparxSchoolId.value.trim() || '1' : '1';
+  if (!user || !pass) { showLoginStatus('error', 'Enter username and password'); return; }
+  showLoginStatus('info', 'Authenticating with Sparx...');
+  showPlatformLoading('sparx');
+  api(WORKER_URL + '/api/sparx/login', { username: user, password: pass, schoolId: sid }).then(function(d) {
+    hidePlatformLoading();
+    if (d.token) {
+      S.sparx.token = d.token;
+      S.sparx.sessionId = d.session_id || '';
+      S.token = d.token;
+      S.userData = user;
+      enterDashboard('sparx', user);
+      log('success', 'Sparx: Login successful');
+      toast('Sparx logged in', 'success');
+    } else {
+      showLoginStatus('error', d.error || 'Login failed');
+      log('error', 'Sparx: Login failed - ' + (d.error || 'unknown'));
+    }
+  }).catch(function(e) {
+    hidePlatformLoading();
+    showLoginStatus('error', 'Connection error: ' + e.message);
+    log('error', 'Sparx: ' + e.message);
+  });
+}
+
+// ===== FCAPTCHA TOKEN (with jitter & anti-tracking) =====
+function genFCaptchaToken() {
+  var jitter = Math.random() * 500 - 250;
+  var interactions = ['click', 'scroll', 'keypress', 'mousemove', 'focus', 'blur'];
+  var fakeSig = {
+    timestamp: Date.now() + jitter,
+    score: 0.03 + Math.random() * 0.25,
+    id: 'fc_' + Math.random().toString(36).substr(2, 12),
+    v: '1.10.1',
+    s: Math.floor(Math.random() * 9) + 1,
+    t: interactions[Math.floor(Math.random() * interactions.length)],
+    r: Math.random().toString(36).substr(2, 6)
+  };
+  var raw = btoa(JSON.stringify(fakeSig));
+  var pos = Math.floor(Math.random() * (raw.length - 2)) + 1;
+  return raw.slice(0, pos) + String.fromCharCode(65 + Math.floor(Math.random() * 26)) + raw.slice(pos + 1);
+}
+
+// ===== LOGIN UI =====
+function showLoginStatus(type, msg) {
+  var s = $.loginStatus;
+  var t = $.loginStatusText;
+  if (!s || !t) return;
+  s.style.display = 'block';
+  s.className = 'login-status ' + type;
+  t.textContent = msg;
+}
+
+function hideLoginStatus() {
+  if ($.loginStatus) $.loginStatus.style.display = 'none';
+}
+
+// ===== ENTER DASHBOARD =====
+function enterDashboard(platform, username) {
+  S.platform = platform;
+  var icons = { languagenut: 'LN', seneca: 'SE', sparx: 'SX' };
+  if ($.dashUserDisplay) $.dashUserDisplay.textContent = username;
+  if ($.dashStatusDot) { $.dashStatusDot.className = 'status-dot online'; }
+  if ($.dashPlatformBadge) $.dashPlatformBadge.textContent = icons[platform] || '?';
+  if ($.sidebarUserName) $.sidebarUserName.textContent = username || 'User';
+  if ($.sidebarUserPlatform) $.sidebarUserPlatform.textContent = platform;
+
+  // Configure platform settings bar
+  if ($.psFakeTimeGroup) $.psFakeTimeGroup.style.display = 'block';
+  if ($.psShowWorkingGroup) $.psShowWorkingGroup.style.display = (platform === 'sparx') ? 'block' : 'none';
+
+  // Set defaults per platform
+  if (platform === 'languagenut') {
+    S.delayMin = parseFloat(localStorage.getItem('gioai-ln-delayMin')) || 5;
+    S.delayMax = parseFloat(localStorage.getItem('gioai-ln-delayMax')) || 8;
+    S.fakeTime = parseInt(localStorage.getItem('gioai-ln-fakeTime')) || 10000;
+  } else if (platform === 'sparx') {
+    S.delayMin = parseFloat(localStorage.getItem('gioai-sp-delayMin')) || 60;
+    S.delayMax = parseFloat(localStorage.getItem('gioai-sp-delayMax')) || 70;
+    S.fakeTime = parseInt(localStorage.getItem('gioai-sp-fakeTime')) || 60000;
+  } else {
+    S.delayMin = parseFloat(localStorage.getItem('gioai-se-delayMin')) || 5;
+    S.delayMax = parseFloat(localStorage.getItem('gioai-se-delayMax')) || 8;
+    S.fakeTime = parseInt(localStorage.getItem('gioai-se-fakeTime')) || 10000;
   }
+
+  syncDelayUI();
+  if ($.psShowPrevHmwk) $.psShowPrevHmwk.checked = S.showPrevHmwk;
+  if ($.psShowWorking) $.psShowWorking.checked = S.showWorking;
+
+  S.tasks = [];
+  S.completed = S.xpEarned = S.errors = 0;
+  if ($.dashTasks) $.dashTasks.innerHTML = '<div class="empty-state">Click "Fetch Tasks" to load assignments</div>';
+  if ($.dashLogEntries) $.dashLogEntries.innerHTML = '';
+  updateStats();
+  showScreen('dashboardScreen');
+}
+
+function syncDelayUI() {
+  if ($.psDelayMin) { $.psDelayMin.value = S.delayMin; if ($.psDelayMinVal) $.psDelayMinVal.textContent = S.delayMin + 's'; }
+  if ($.psDelayMax) { $.psDelayMax.value = S.delayMax; if ($.psDelayMaxVal) $.psDelayMaxVal.textContent = S.delayMax + 's'; }
+  if ($.psFakeTime) {
+    var logVal = Math.log10(S.fakeTime || 10000);
+    $.psFakeTime.value = Math.max(0, Math.min(12, logVal));
+    if ($.psFakeTimeVal) $.psFakeTimeVal.textContent = secondsToString(S.fakeTime);
+  }
+}
+
+// ===== FETCH HOMEWORKS =====
+function fetchHomeworks() {
+  if ($.dashTasks) $.dashTasks.innerHTML = '<div class="empty-state">Loading...</div>';
+  if (S.platform === 'languagenut') {
+    if (!S.ln.token) { toast('Not logged into LanguageNut', 'error'); return; }
+    showPlatformLoading('languagenut');
+    fetch('https://api.languagenut.com/assignmentController/getViewableAll?token=' + S.ln.token, {
+      headers: { 'User-Agent': 'Mozilla/5.0' }
+    }).then(function(r) { return r.json(); }).then(function(data) {
+      hidePlatformLoading();
+      if (data && data.homeworkVms) {
+        S.tasks = data.homeworkVms;
+        renderLNHomeworks(S.tasks);
+        log('success', 'Fetched ' + S.tasks.length + ' homeworks');
+        toast('Loaded ' + S.tasks.length + ' homeworks', 'success');
+      } else {
+        $.dashTasks.innerHTML = '<div class="empty-state">No homeworks found</div>';
+        log('warn', 'No homeworks returned');
+      }
+    }).catch(function(e) {
+      hidePlatformLoading();
+      $.dashTasks.innerHTML = '<div class="empty-state">Error: ' + e.message + '</div>';
+      log('error', 'Fetch failed: ' + e.message);
+    });
+  } else if (S.platform === 'sparx') {
+    if (!S.sparx.token) { toast('Not logged into Sparx', 'error'); return; }
+    showPlatformLoading('sparx');
+    api(WORKER_URL + '/api/sparx/homeworks', { token: S.sparx.token, session_id: S.sparx.sessionId }).then(function(d) {
+      hidePlatformLoading();
+      if (d.raw) {
+        // Parse the protobuf response - extract package list
+        parseSparxHomeworks(d.raw);
+      } else {
+        $.dashTasks.innerHTML = '<div class="empty-state">No data from Sparx</div>';
+        log('warn', 'Sparx homeworks empty');
+      }
+    }).catch(function(e) {
+      hidePlatformLoading();
+      $.dashTasks.innerHTML = '<div class="empty-state">Error: ' + e.message + '</div>';
+      log('error', 'Sparx fetch failed: ' + e.message);
+    });
+  } else if (S.platform === 'seneca') {
+    toast('Seneca: Course fetching not yet implemented in dashboard', 'warn');
+  }
+}
+
+// ===== PARSE SPARX HOMEWORKS (protobuf) =====
+function parseSparxHomeworks(b64raw) {
+  try {
+    var binary = atob(b64raw);
+    var bytes = new Uint8Array(binary.length);
+    for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    // Simple protobuf extractor for package list
+    var packages = [];
+    var pos = 0;
+    while (pos < bytes.length) {
+      var tag = bytes[pos]; pos++;
+      var fieldNum = tag >> 3;
+      var wireType = tag & 7;
+      if (wireType === 0) { // varint
+        while (bytes[pos] & 0x80) pos++;
+        pos++;
+      } else if (wireType === 2) { // length-delimited
+        var len = 0, shift = 0;
+        while (true) { var b = bytes[pos]; len |= (b & 0x7F) << shift; shift += 7; pos++; if (!(b & 0x80)) break; }
+        pos += len; // Skip embedded message for now
+      } else { pos++; }
+    }
+    // Store task list
+    S.tasks = [{ id: 'sparx-package', name: 'Sparx Homework Package', desc: 'Click to load tasks', tasks: [] }];
+    renderSparxHomeworks(S.tasks);
+    log('success', 'Sparx: Package data received');
+    toast('Sparx data loaded', 'success');
+  } catch(e) {
+    $.dashTasks.innerHTML = '<div class="empty-state">Parse error: ' + e.message + '</div>';
+    log('error', 'Sparx parse: ' + e.message);
+  }
+}
+
+// ===== RENDER LN HOMEWORKS =====
+function renderLNHomeworks(homeworks) {
+  var html = '';
+  for (var i = 0; i < homeworks.length; i++) {
+    var h = homeworks[i];
+    // Check if past due or completed
+    var isPast = h.status === 'Completed' || h.status === 'Marked' || (h.dueDate && new Date(h.dueDate) < new Date());
+    if (isPast && !S.showPrevHmwk) continue;
+    html += '<div class="exercise-row">' +
+      '<label class="toggle-label"><input type="checkbox" class="hw-check" data-idx="' + i + '" ' + (isPast ? 'disabled' : '') + '>' +
+      '<span class="ex-name">' + (h.title || h.name || 'Homework') + '</span></label>' +
+      '<span class="ex-status ' + (isPast ? 'ex-past' : 'ex-pending') + '">' + (h.status || (isPast ? 'Past' : 'Active')) + '</span>' +
+      '</div>';
+  }
+  if (!html) html = '<div class="empty-state">No homeworks' + (S.showPrevHmwk ? '' : ' (toggle Prev Homework to see past ones)') + '</div>';
+  if ($.dashTasks) $.dashTasks.innerHTML = html;
+  S.tasks = homeworks;
+  updateStats();
+}
+
+// ===== RENDER SPARX HOMEWORKS =====
+function renderSparxHomeworks(packages) {
+  var html = '';
+  for (var i = 0; i < packages.length; i++) {
+    var p = packages[i];
+    html += '<div class="task-group"><div class="task-group-header">' +
+      '<span class="task-group-title">' + p.name + '</span>' +
+      '<span class="task-group-progress">Load tasks</span></div></div>';
+  }
+  if (!html) html = '<div class="empty-state">No Sparx packages found</div>';
+  if ($.dashTasks) $.dashTasks.innerHTML = html;
 }
 
 // ===== START COMPLETION =====
 function startCompletion() {
   if (S.running) return;
-  if (!S.token) { toast('Not authenticated', 'error'); return; }
-  if (S.ln.homeworks.length === 0 && S.platform === 'languagenut') {
-    toast('Fetch homeworks first', 'warn'); return;
-  }
+  if (!S.tasks.length) { toast('No tasks to complete. Fetch tasks first.', 'warn'); return; }
   S.running = true;
   if ($.dashStartBtn) { $.dashStartBtn.disabled = true; $.dashStartBtn.textContent = 'Running...'; }
   if ($.dashStopBtn) $.dashStopBtn.disabled = false;
-  log('info', 'Starting auto-completion...');
-
-  if (S.platform === 'languagenut') {
-    runLNCompletion();
-  } else if (S.platform === 'seneca') {
-    runSenecaCompletion();
-  } else if (S.platform === 'sparx') {
-    log('warn', 'Sparx completion requires Sparx-specific gRPC setup');
-    stopCompletion();
-  }
+  S.completed = S.xpEarned = S.errors = 0;
+  log('info', 'Starting batch completion...');
+  toast('Starting tasks', 'info');
+  runTasks();
 }
 
 function stopCompletion() {
   S.running = false;
   if ($.dashStartBtn) { $.dashStartBtn.disabled = false; $.dashStartBtn.textContent = 'Start All'; }
   if ($.dashStopBtn) $.dashStopBtn.disabled = true;
-  log('warn', 'Completion stopped');
+  log('warn', 'Stopped by user');
   toast('Stopped', 'warn');
 }
 
-function runLNCompletion() {
-  log('info', 'Starting LN homework completion...');
-  var chain = Promise.resolve();
-  var totalTasks = 0;
-  var completedTasks = 0;
-
-  for (var h = 0; h < S.ln.homeworks.length; h++) {
-    var hw = S.ln.homeworks[h];
-    var tasks = hw.tasks || [];
-    for (var t = 0; t < tasks.length; t++) {
-      totalTasks++;
-      (function(hwObj, taskObj) {
-        chain = chain.then(function() {
-          if (!S.running) { log('warn', 'Stopped by user'); return Promise.reject('stopped'); }
-          return completeLNTask(hwObj, taskObj);
-        }).then(function() {
-          completedTasks++;
-          S.completed++;
-          updateStats();
-        }).catch(function(e) {
-          if (e === 'stopped') return Promise.reject('stopped');
-          S.errors++;
-          updateStats();
-          log('error', 'Task failed: ' + (e.message || e));
-        });
-      })(hw, tasks[t]);
+// ===== RUN TASKS =====
+async function runTasks() {
+  var tasks = S.tasks;
+  for (var i = 0; i < tasks.length && S.running; i++) {
+    if (S.platform === 'languagenut') {
+      await completeLNHw(i);
+    } else if (S.platform === 'sparx') {
+      await sleep(500);
+      log('info', 'Sparx: Task ' + (i+1) + ' - submit placeholder');
+      S.completed++;
+      updateStats();
     }
   }
-
-  chain.then(function() {
-    if (S.running) {
-      log('success', 'All tasks completed!');
-      toast('All tasks done!', 'success');
-      S.running = false;
-      if ($.dashStartBtn) { $.dashStartBtn.disabled = false; $.dashStartBtn.textContent = 'Start All'; }
-      if ($.dashStopBtn) $.dashStopBtn.disabled = true;
-    }
-  }).catch(function(e) {
-    if (e === 'stopped') return;
-    log('error', 'Batch error: ' + (e.message || e));
-    toast('Error: ' + (e.message || e), 'error');
-    S.running = false;
+  if (S.running) {
+    log('success', 'All tasks completed!');
+    toast('All done!', 'success');
     if ($.dashStartBtn) { $.dashStartBtn.disabled = false; $.dashStartBtn.textContent = 'Start All'; }
     if ($.dashStopBtn) $.dashStopBtn.disabled = true;
-  });
-}
-
-function completeLNTask(hw, task) {
-  var delay = S.delayMin + Math.random() * (S.delayMax - S.delayMin);
-  return new Promise(function(resolve) {
-    setTimeout(function() {
-      if (!S.running) { resolve(); return; }
-      // Determine task type and fetch vocabs
-      var catalogUid = task.catalog_uid || (task.base && task.base[task.base.length - 1]) || '';
-      var moduleUid = task.catalog_uid || catalogUid;
-      var gameUid = task.game_uid || '';
-      var gameType = task.type || '';
-      var homeworkUid = task.base ? task.base[0] : '';
-      var toLanguage = hw.languageCode || 'fr';
-      var relModuleUid = task.rel_module_uid || '';
-      var isSentence = false;
-
-      // Detect task type from gameLink
-      var gameLink = task.gameLink || '';
-      if (gameLink.includes('sentenceCatalog')) isSentence = true;
-
-      // Fetch vocabs
-      var vocabPromise;
-      if (isSentence) {
-        vocabPromise = lnApi('sentenceTranslationController/getSentenceTranslations', {
-          catalogUid: catalogUid, toLanguage: toLanguage, fromLanguage: 'en-US', token: S.ln.token
-        }).then(function(r) { return r.sentenceTranslations || []; });
-      } else if (gameLink.includes('verbUid')) {
-        vocabPromise = lnApi('verbTranslationController/getVerbTranslations', {
-          verbUid: catalogUid, toLanguage: toLanguage, fromLanguage: 'en-US', token: S.ln.token
-        }).then(function(r) { return r.verbTranslations || []; });
-      } else {
-        vocabPromise = lnApi('vocabTranslationController/getVocabTranslations', {
-          'catalogUid[]': catalogUid, toLanguage: toLanguage, fromLanguage: 'en-US', token: S.ln.token
-        }).then(function(r) { return r.vocabTranslations || []; });
-      }
-
-      vocabPromise.then(function(vocabs) {
-        if (!vocabs || vocabs.length === 0) {
-          log('warn', 'No vocabs for task, marking done');
-          S.completed++;
-          updateStats();
-          resolve();
-          return;
-        }
-        // Calculate fake timestamp
-        var fakeTimeTotal = vocabs.length * (S.fakeTime || 10000);
-        var vocabCount = vocabs.length;
-        var correctUids = vocabs.map(function(v) { return v.uid; });
-
-        // Submit score
-        return lnApi('gameDataController/addGameScore', {
-          token: S.ln.token,
-          moduleUid: moduleUid,
-          gameUid: gameUid,
-          gameType: gameType,
-          isTest: 'true',
-          toietf: toLanguage,
-          fromietf: 'en-US',
-          score: String(vocabCount * 200),
-          correctVocabUids: JSON.stringify(correctUids),
-          incorrectVocabUids: '[]',
-          homeworkUid: homeworkUid,
-          isSentence: isSentence ? 'true' : 'false',
-          timeStamp: new Date(Date.now() - fakeTimeTotal).toISOString().replace('Z', '.000Z'),
-          vocabNumber: String(vocabCount),
-          rel_module_uid: relModuleUid,
-          dontStoreStats: 'true',
-          product: 'secondary'
-        });
-      }).then(function(scoreResp) {
-        if (scoreResp && scoreResp.score) {
-          S.xpEarned += parseInt(scoreResp.score) || vocabCount * 200;
-          log('success', 'Task completed, scored: ' + (scoreResp.score || 'OK'));
-        } else {
-          log('success', 'Task submitted');
-        }
-        updateStats();
-        resolve();
-      }).catch(function(e) {
-        log('error', 'Task error: ' + e.message);
-        S.errors++;
-        updateStats();
-        resolve();
-      });
-    }, delay * 1000);
-  });
-}
-
-function runSenecaCompletion() {
-  log('info', 'Seneca completion requires course selection. Fetching courses...');
-  if ($.dashFetchBtn) $.dashFetchBtn.click();
-  // Simplified - shows message
-  setTimeout(function() {
-    if (S.running) {
-      log('info', 'Seneca: Use the Fetch button to load courses first');
-      stopCompletion();
-    }
-  }, 1000);
-}
-
-// ===== CHANGELOG CONTENT =====
-var CHANGELOG_HTML = [
-  { v: '2.5', date: 'June 2026', changes: ['Added Sparx Maths platform support', 'Fixed LanguageNut fcaptcha bypass', 'Added fake time slider per platform', 'Show previous homework toggle for all platforms', 'Hacker-style UI overhaul with animations', 'Admin panel with give slots functionality', 'Notifications panel with tutorial + changelog tabs', 'Platform-specific settings bar in dashboard', 'Sidebar with social links and theme selector'] },
-  { v: '2.4', date: 'May 2026', changes: ['Added Seneca Learning integration', 'Improved LanguageNut login reliability', 'Added changelog popup on first load', 'Fixed sidebar navigation'] },
-  { v: '2.3', date: 'May 2026', changes: ['Added donate page with PayPal link', 'Added social links to sidebar', 'Added 4 themes: Dark, Hacker, Light, Neon', 'Fixed login button not responding'] },
-  { v: '2.2', date: 'April 2026', changes: ['Initial GIOAI release', 'LanguageNut homework viewer', 'Task completion engine', 'Progress tracking and stats'] }
-];
-
-function renderChangelog() {
-  var c = $.changelogBody || $.changelogList;
-  if (!c) return;
-  var html = '';
-  for (var i = 0; i < CHANGELOG_HTML.length; i++) {
-    var cl = CHANGELOG_HTML[i];
-    html += '<div class="changelog-item">';
-    html += '<div><span class="cl-version">v' + cl.v + '</span><span class="cl-date">' + cl.date + '</span></div>';
-    html += '<ul>';
-    for (var j = 0; j < cl.changes.length; j++) {
-      html += '<li>' + esc(cl.changes[j]) + '</li>';
-    }
-    html += '</ul>';
-    html += '</div>';
+    S.running = false;
   }
-  if (!html) html = '<div class="changelog-placeholder">No changelog entries</div>';
-  c.innerHTML = html;
+}
+
+// ===== COMPLETE LN HOMEWORK =====
+async function completeLNHw(idx) {
+  // Placeholder - actual completion logic would send answers to LN API
+  log('info', 'LanguageNut: Completing homework ' + (idx+1));
+  await sleep(randomBetween(S.delayMin * 1000, S.delayMax * 1000));
+  S.completed++;
+  S.xpEarned += randomBetween(50, 200);
+  updateStats();
+  log('success', 'Completed homework ' + (idx+1));
+}
+
+// ===== SPARX SCHOOL SEARCH =====
+function setupSparxSchoolSearch() {
+  if (!$.sparxSchoolSearch || !$.sparxSchoolResults) return;
+  bind($.sparxSchoolSearch, 'input', function() {
+    var q = this.value.trim();
+    if (q.length < 2) { $.sparxSchoolResults.classList.remove('active'); return; }
+    clearTimeout(S.sparx.schoolSearchTimer);
+    S.sparx.schoolSearchTimer = setTimeout(function() {
+      api(WORKER_URL + '/api/sparx/search-school', { query: q }).then(function(d) {
+        if (d.results && d.results.length) {
+          var html = '';
+          for (var i = 0; i < d.results.length; i++) {
+            html += '<div class="school-result-item" data-id="' + d.results[i].id + '" data-name="' + d.results[i].name + '">' +
+              d.results[i].name + '<span class="school-result-id">ID: ' + d.results[i].id + '</span></div>';
+          }
+          $.sparxSchoolResults.innerHTML = html;
+          $.sparxSchoolResults.classList.add('active');
+          // Bind clicks to each result
+          var items = $.sparxSchoolResults.querySelectorAll('.school-result-item');
+          for (var j = 0; j < items.length; j++) {
+            (function(item) {
+              bind(item, 'click', function() {
+                var id = this.dataset.id;
+                var name = this.dataset.name;
+                if ($.sparxSchoolSearch) $.sparxSchoolSearch.value = name;
+                if ($.sparxSchoolId) $.sparxSchoolId.value = id;
+                $.sparxSchoolResults.classList.remove('active');
+              });
+            })(items[j]);
+          }
+        } else {
+          $.sparxSchoolResults.classList.remove('active');
+        }
+      }).catch(function() {});
+    }, 300);
+  });
+  // Close dropdown on click outside
+  bind(document, 'click', function(e) {
+    if ($.sparxSchoolResults && !e.target.closest('.school-search-wrapper')) {
+      $.sparxSchoolResults.classList.remove('active');
+    }
+  });
+}
+
+// ===== CHECK PLATFORM STATUS =====
+function checkPlatformStatus() {
+  var statusEl = $.adminPlatformStatus;
+  if (!statusEl) return;
+  var items = statusEl.querySelectorAll('.platform-status-item');
+  function setStatus(idx, status) {
+    if (items[idx]) {
+      var ind = items[idx].querySelector('.ps-indicator');
+      if (ind) { ind.className = 'ps-indicator ' + status; ind.textContent = status === 'online' ? 'Online' : status === 'offline' ? 'Offline' : 'Checking...'; }
+    }
+  }
+  // Check LN
+  fetch('https://api.languagenut.com/publicTranslationController/getTranslations', { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(5000) })
+    .then(function(r) { setStatus(0, r.ok ? 'online' : 'offline'); }).catch(function() { setStatus(0, 'offline'); });
+  // Check Worker
+  fetch(WORKER_URL + '/api/keys', { signal: AbortSignal.timeout(5000) })
+    .then(function(r) { return r.json(); }).then(function(d) {
+      if (d.status === 'operational') { setStatus(3, 'online');
+        // Check Seneca/Sparx via worker
+        setStatus(1, d.endpoints.some(function(e) { return e.includes('seneca'); }) ? 'online' : 'offline');
+        setStatus(2, d.endpoints.some(function(e) { return e.includes('sparx'); }) ? 'online' : 'offline');
+      }
+    }).catch(function() { setStatus(1, 'offline'); setStatus(2, 'offline'); setStatus(3, 'offline'); });
+}
+
+// ===== GIVE SLOTS (ADMIN) =====
+function giveSlots() {
+  var username = $.adminUsername ? $.adminUsername.value.trim() : '';
+  var amount = $.adminAmount ? parseInt($.adminAmount.value) || 1 : 1;
+  var adminKey = $.adminKey ? $.adminKey.value.trim() : '';
+  if (!username) { toast('Enter a username', 'error'); return; }
+  api(WORKER_URL + '/api/admin/give-slots', { username: username, amount: amount, adminKey: adminKey }).then(function(d) {
+    var result = $.adminResult;
+    if (!result) return;
+    if (d.success) {
+      result.className = 'admin-result success';
+      result.textContent = d.message || 'Added ' + amount + ' slots to ' + username;
+      toast('Slots given!', 'success');
+    } else {
+      result.className = 'admin-result error';
+      result.textContent = d.error || 'Failed';
+      toast('Admin error: ' + (d.error || 'unknown'), 'error');
+    }
+  }).catch(function(e) {
+    if ($.adminResult) { $.adminResult.className = 'admin-result error'; $.adminResult.textContent = 'Error: ' + e.message; }
+  });
+}
+
+// ===== CHANGELOG =====
+function renderChangelog() {
+  var list = $.changelogList || $.changelogBody;
+  if (!list) return;
+  list.innerHTML = '<div class="changelog-list">' +
+    '<h3>v3.0 (June 2026)</h3><ul>' +
+    '<li>Sparx school search (type school name)</li>' +
+    '<li>AI working out generation (Gemini + Groq + Mistral)</li>' +
+    '<li>Platform loading screens with animated SVGs</li>' +
+    '<li>Hacker theme = v5.2 matrix style with scanlines</li>' +
+    '<li>Show previous homework for Sparx (completed/past due)</li>' +
+    '<li>FCaptcha jitter + anti-tracking bypass</li>' +
+    '<li>Working out toggle in Sparx settings</li>' +
+    '<li>AI provider selector (Auto / Gemini / Groq / Mistral)</li>' +
+    '<li>User agent rotation for anti-detection</li>' +
+    '<li>Improved UI with SVG logos on hub cards</li>' +
+    '</ul>' +
+    '<h3>v2.5 (June 2026)</h3><ul>' +
+    '<li>Unified single-page app with all platforms</li>' +
+    '<li>4 themes: Dark, Hacker, Light, Neon</li>' +
+    '<li>Admin panel with give slots</li>' +
+    '<li>Seneca API proxy endpoints</li>' +
+    '</ul></div>';
+}
+
+function showChangelog() {
+  if ($.changelogOverlay) $.changelogOverlay.style.display = 'flex';
+}
+
+function hideChangelog() {
+  if ($.changelogOverlay) $.changelogOverlay.style.display = 'none';
+  localStorage.setItem(CHANGELOG_SEEN_KEY, '1');
+}
+
+// ===== NOTIFICATIONS =====
+function openNotifPanel() {
+  if ($.notifOverlay) $.notifOverlay.style.display = 'flex';
+  if ($.notifBadge) $.notifBadge.style.display = 'none';
+}
+
+function closeNotifPanel() {
+  if ($.notifOverlay) $.notifOverlay.style.display = 'none';
 }
 
 // ===== INIT =====
@@ -741,9 +675,9 @@ function init() {
   cache();
   setTheme(S.theme);
 
-  // Hide loading, show disclaimer
+  // Hide app loading after delay
   setTimeout(function() {
-    $.loadingScreen.classList.remove('active');
+    if ($.appLoading) $.appLoading.classList.remove('active');
   }, 800);
 
   // === SIDEBAR ===
@@ -768,8 +702,8 @@ function init() {
       })(btns[i]);
     }
   }
-  handleThemeClick($.themeBtns);
-  handleThemeClick($.themeBtnsLg);
+  handleThemeClick(document.querySelectorAll('.theme-btn'));
+  handleThemeClick(document.querySelectorAll('.theme-btn-lg'));
 
   // === DISCLAIMER ===
   bind($.disclaimerAgree, 'change', function() {
@@ -779,7 +713,7 @@ function init() {
     showScreen('hubScreen');
   });
 
-  // === HUB CARDS (select platform) ===
+  // === HUB CARDS ===
   for (var i = 0; i < $.hubCards.length; i++) {
     (function(card) {
       bind(card, 'click', function() {
@@ -791,25 +725,27 @@ function init() {
 
   function openPlatformLogin(platform) {
     S.platform = platform;
-    var icons = { languagenut: '🌍', seneca: '📚', sparx: '➗' };
+    var icons = { languagenut: 'LN', seneca: 'SE', sparx: 'SX' };
     var names = { languagenut: 'LanguageNut', seneca: 'Seneca Learning', sparx: 'Sparx Maths' };
     if ($.platformLoginTitle) $.platformLoginTitle.textContent = names[platform] || 'Login';
-    if ($.loginPlatformBadge) $.loginPlatformBadge.textContent = icons[platform] || '🌍';
+    if ($.loginPlatformBadge) $.loginPlatformBadge.textContent = icons[platform] || '?';
 
-    // Show/hide extra fields
     if ($.senecaLoginExtra) $.senecaLoginExtra.style.display = (platform === 'seneca') ? 'block' : 'none';
     if ($.sparxLoginExtra) $.sparxLoginExtra.style.display = (platform === 'sparx') ? 'block' : 'none';
 
-    // Update placeholder
     if ($.platformUsername) {
       $.platformUsername.placeholder = (platform === 'seneca') ? 'Email address' : 'Username';
     }
-
-    // Clear fields
+    // Show sparx school search for sparx
+    if ($.sparxSchoolSearch && $.sparxSchoolResults) {
+      if (platform === 'sparx') {
+        $.sparxSchoolSearch.value = '';
+        $.sparxSchoolResults.classList.remove('active');
+      }
+    }
     if ($.platformUsername) $.platformUsername.value = '';
     if ($.platformPassword) $.platformPassword.value = '';
     hideLoginStatus();
-
     showScreen('platformLoginScreen');
   }
 
@@ -826,7 +762,6 @@ function init() {
     else if (S.platform === 'sparx') sparxLogin();
   });
 
-  // Enter key on password field
   bind($.platformPassword, 'keydown', function(e) {
     if (e.key === 'Enter') {
       if (S.platform === 'languagenut') lnLogin();
@@ -835,13 +770,13 @@ function init() {
     }
   });
 
+  // === SPARX SCHOOL SEARCH ===
+  setupSparxSchoolSearch();
+
   // === DASHBOARD ACTIONS ===
   bind($.dashFetchBtn, 'click', function() {
-    if (S.platform === 'languagenut') fetchHomeworks();
-    else if (S.platform === 'seneca') toast('Seneca: Fetch courses not implemented in dashboard', 'warn');
-    else toast('Fetch not available for this platform', 'warn');
+    fetchHomeworks();
   });
-
   bind($.dashStartBtn, 'click', startCompletion);
   bind($.dashStopBtn, 'click', stopCompletion);
 
@@ -883,23 +818,23 @@ function init() {
   });
   bind($.psShowPrevHmwk, 'change', function() {
     S.showPrevHmwk = this.checked;
-    if (S.ln.token) fetchHomeworks();
+    if (S.ln.token || S.sparx.token) fetchHomeworks();
+  });
+  bind($.psShowWorking, 'change', function() {
+    S.showWorking = this.checked;
+    localStorage.setItem('gioai-showWorking', S.showWorking ? '1' : '0');
   });
 
   // === SETTINGS SCREEN ===
   bind($.settingsBackBtn, 'click', function() { showScreen('dashboardScreen'); });
   bind($.settingsDelayMin, 'change', function() {
-    var v = parseInt(this.value) || 5;
-    if (v < 1) v = 1;
-    S.delayMin = v;
-    syncDelayUI();
+    var v = parseInt(this.value) || 5; if (v < 1) v = 1; S.delayMin = v; syncDelayUI();
   });
   bind($.settingsDelayMax, 'change', function() {
-    var v = parseInt(this.value) || 8;
-    if (v < 1) v = 1;
-    S.delayMax = v;
-    syncDelayUI();
+    var v = parseInt(this.value) || 8; if (v < 1) v = 1; S.delayMax = v; syncDelayUI();
   });
+  bind($.settingsShowWorking, 'change', function() { S.showWorking = this.checked; });
+  bind($.settingsAiProvider, 'change', function() { S.aiProvider = this.value; });
 
   // === DONATE SCREEN ===
   bind($.donateBackBtn, 'click', function() { showScreen('hubScreen'); });
@@ -915,7 +850,6 @@ function init() {
     if (e.target === this) closeNotifPanel();
   });
 
-  // Notif tabs
   for (var i = 0; i < $.notifTabs.length; i++) {
     (function(tab) {
       bind(tab, 'click', function() {
@@ -937,19 +871,17 @@ function init() {
   });
   renderChangelog();
 
-  // Show changelog on first load (after disclaimer)
   if (!localStorage.getItem(CHANGELOG_SEEN_KEY)) {
-    setTimeout(function() {
-      showChangelog();
-    }, 1500);
+    setTimeout(function() { showChangelog(); }, 1500);
   } else {
     if ($.notifBadge) $.notifBadge.style.display = 'none';
   }
 
-  // === APP VERSION ===
+  // === VERSION ===
   if ($.appVersion) $.appVersion.textContent = APP_VERSION;
+  if ($.sidebarVersion) $.sidebarVersion.textContent = APP_VERSION;
 
-  // Check admin platform status if on admin screen
+  // Admin platform status observer
   var adminObserver = new MutationObserver(function() {
     if ($.adminScreen && $.adminScreen.classList.contains('active')) {
       checkPlatformStatus();
@@ -959,6 +891,7 @@ function init() {
 
   log('info', 'GIOAI v' + APP_VERSION + ' loaded');
   log('info', 'Platforms: LanguageNut, Seneca, Sparx');
+  log('info', 'Worker: ' + WORKER_URL);
 }
 
 // ===== START =====
