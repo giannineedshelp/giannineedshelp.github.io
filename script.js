@@ -626,7 +626,7 @@ function giveSlots() {
 
 // ===== CHANGELOG =====
 function renderChangelog() {
-  var list = $.changelogList || $.changelogBody;
+  var list = $.changelogBody || $.changelogList;
   if (!list) return;
   list.innerHTML = '<div class="changelog-list">' +
     '<h3>v3.0 (June 2026)</h3><ul>' +
@@ -675,9 +675,10 @@ function init() {
   cache();
   setTheme(S.theme);
 
-  // Hide app loading after delay
+  // Hide app loading after delay and show disclaimer
   setTimeout(function() {
     if ($.appLoading) $.appLoading.classList.remove('active');
+    showScreen('disclaimer');
   }, 800);
 
   // === SIDEBAR ===
@@ -850,17 +851,19 @@ function init() {
     if (e.target === this) closeNotifPanel();
   });
 
-  for (var i = 0; i < $.notifTabs.length; i++) {
-    (function(tab) {
-      bind(tab, 'click', function() {
-        var target = this.dataset.tab;
-        for (var j = 0; j < $.notifTabs.length; j++) $.notifTabs[j].classList.remove('active');
-        for (var j = 0; j < $.notifPanes.length; j++) $.notifPanes[j].classList.remove('active');
-        this.classList.add('active');
-        var pane = document.getElementById(target + 'Pane');
-        if (pane) pane.classList.add('active');
-      });
-    })($.notifTabs[i]);
+  if ($.notifTabs && $.notifTabs.length) {
+    for (var i = 0; i < $.notifTabs.length; i++) {
+      (function(tab) {
+        bind(tab, 'click', function() {
+          var target = this.dataset.tab;
+          for (var j = 0; j < $.notifTabs.length; j++) $.notifTabs[j].classList.remove('active');
+          for (var j = 0; j < $.notifPanes.length; j++) $.notifPanes[j].classList.remove('active');
+          this.classList.add('active');
+          var pane = document.getElementById(target + 'Pane');
+          if (pane) pane.classList.add('active');
+        });
+      })($.notifTabs[i]);
+    }
   }
 
   // === CHANGELOG ===
@@ -902,4 +905,7 @@ if (document.readyState === 'loading') {
 }
 
 })();
+
+
+
 
