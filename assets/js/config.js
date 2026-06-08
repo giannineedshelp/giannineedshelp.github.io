@@ -6,6 +6,10 @@ var CONFIG = {
   WORKER_URL: 'https://gioai.giannikei12.workers.dev',
   API_BASE: 'https://gioai.giannikei12.workers.dev/api',
   
+  // Local Sparx Node.js backend (optional - overrides worker for Sparx)
+  SPARX_API: localStorage.getItem('gioai-sparx-api') || 'http://localhost:3456',
+  SPARX_WS: (localStorage.getItem('gioai-sparx-api') || 'http://localhost:3456').replace('http', 'ws'),
+  
   // Default delays per platform
   DELAYS: {
     languagenut: { min: 5, max: 8, fakeTime: 10000 },
@@ -33,4 +37,5 @@ var CONFIG = {
   // Themes
   THEMES: ['dark', 'hacker', 'light', 'neon', 'ocean', 'sunset']
 };
+
 

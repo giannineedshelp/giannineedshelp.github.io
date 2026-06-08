@@ -12,3 +12,8 @@ Thumbs.db
 .vscode/
 .idea/
 
+
+# Node.js
+node_modules/
+sparx-automator/node_modules/
+

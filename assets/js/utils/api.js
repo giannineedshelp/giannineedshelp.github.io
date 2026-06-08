@@ -44,7 +44,16 @@ var API = (function() {
   }
   
   function sparxLogin(school, username, password) {
-    return worker('/api/sparx/login', { school: school, username: username, password: password });
+    // Try local Node.js server first, then fallback to worker
+    return call(CONFIG.SPARX_API + '/api/sparx/login', { schoolId: school, username: username, password: password })
+      .then(function(r) {
+        if (r.error && r.autoLoginFailed) {
+          // Fallback to worker
+          console.log('[API] Sparx local login failed, trying worker...');
+          return worker('/api/sparx/login', { school: school, username: username, password: password });
+        }
+        return r;
+      });
   }
   
   function sparxManualAuth(token) {
@@ -54,6 +63,16 @@ var API = (function() {
   // Fetch tasks
   function fetchTasks(platform, auth) {
     var ep = '/api/' + platform + '/homeworks';
+    if (platform === 'sparx') {
+      // Try local Node.js server first
+      return call(CONFIG.SPARX_API + ep, auth).then(function(r) {
+        if (r.error) {
+          console.log('[API] Sparx local fetch failed, trying worker...');
+          return worker(ep, auth);
+        }
+        return r;
+      });
+    }
     return worker(ep, auth);
   }
   
@@ -95,4 +114,5 @@ var API = (function() {
     adminSetPlatformStatus: adminSetPlatformStatus
   };
 })();
+
 
