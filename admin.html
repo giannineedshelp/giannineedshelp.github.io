@@ -1,229 +1,28 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GIOAI Admin v6.0</title>
-  <link rel="stylesheet" href="styles.css">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <style>
-    .admin-body { padding: 2rem; max-width: 1000px; margin: 0 auto; }
-    .admin-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; flex-wrap: wrap; gap: .5rem; }
-    .admin-header h1 { font-size: 1.5rem; color: var(--accent); }
-    .admin-error { color: var(--danger); font-size: .85rem; margin-top: .4rem; display: none; }
-    .admin-section { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.2rem; margin-bottom: 1rem; }
-    .admin-section h2 { font-size: 1.1rem; margin-bottom: .8rem; color: var(--text); }
-    .auth-box { max-width: 360px; margin: 4rem auto; text-align: center; }
-    .auth-box h1 { font-size: 2rem; color: var(--accent); margin-bottom: .2rem; }
-    .auth-box input { margin-bottom: .6rem; }
-    .status-grid { display: flex; gap: .6rem; flex-wrap: wrap; margin-bottom: .6rem; }
-    .status-item { flex: 1; min-width: 140px; padding: .6rem; background: var(--bg3); border-radius: var(--rs); }
-    .status-item label { display: block; font-size: .8rem; font-weight: 600; margin-bottom: .3rem; color: var(--text2); }
-    .status-item select { width: 100%; padding: .3rem .5rem; border-radius: var(--rs); border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: .8rem; }
-    .stats-row { display: flex; gap: .6rem; flex-wrap: wrap; margin-bottom: .6rem; }
-    .stat-card { flex: 1; min-width: 100px; padding: .6rem; background: var(--bg3); border-radius: var(--rs); text-align: center; }
-    .stat-card .num { font-size: 1.2rem; font-weight: 700; color: var(--accent); display: block; }
-    .stat-card .lbl { font-size: .7rem; color: var(--text3); text-transform: uppercase; letter-spacing: .5px; }
-    .blacklist-item { display: flex; align-items: center; justify-content: space-between; padding: .4rem .6rem; background: var(--bg3); border-radius: var(--rs); margin-bottom: .3rem; font-size: .8rem; gap: .5rem; flex-wrap: wrap; }
-    .blacklist-item .unban { color: var(--danger); cursor: pointer; font-size: .7rem; font-weight: 600; padding: .1rem .4rem; border-radius: 3px; }
-    .blacklist-item .unban:hover { background: rgba(255,107,107,0.1); }
-    .blacklist-item .platform-tags { display: flex; gap: .3rem; flex-wrap: wrap; }
-    .blacklist-item .platform-tag { font-size: .65rem; padding: .15rem .5rem; border-radius: 3px; background: var(--surface); border: 1px solid var(--border); cursor: pointer; user-select: none; }
-    .blacklist-item .platform-tag.active-tag { background: var(--accent-glow); color: var(--accent2); border-color: var(--accent); }
-    .blacklist-form { display: flex; gap: .4rem; flex-wrap: wrap; align-items: flex-end; }
-    .blacklist-form input { flex: 1; min-width: 120px; }
-    .blacklist-form select { width: auto; min-width: 130px; padding: .5rem .7rem; }
-    .log-tabs { display: flex; gap: .2rem; margin-bottom: .4rem; flex-wrap: wrap; }
-    .log-tabs .tab { padding: .3rem .7rem; font-size: .75rem; border-radius: var(--rs); cursor: pointer; background: var(--surface); border: 1px solid var(--border); color: var(--text2); transition: all .15s; }
-    .log-tabs .tab:hover { background: var(--surface-hover); }
-    .log-tabs .tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
-    .log-content { max-height: 200px; overflow-y: auto; background: var(--bg3); border-radius: var(--rs); padding: .5rem; font-family: var(--mono); font-size: .7rem; }
-    .log-content div { padding: 2px 0; border-bottom: 1px solid var(--border); }
-    .announce-item { display: flex; align-items: center; justify-content: space-between; padding: .4rem .6rem; background: var(--bg3); border-radius: var(--rs); margin-bottom: .3rem; font-size: .8rem; gap: .5rem; }
-    .announce-item .del { color: var(--danger); cursor: pointer; font-size: .7rem; font-weight: 600; padding: .1rem .4rem; border-radius: 3px; }
-    .announce-item .del:hover { background: rgba(255,107,107,0.1); }
-    .account-item { display: flex; align-items: center; justify-content: space-between; padding: .4rem .6rem; background: var(--bg3); border-radius: var(--rs); margin-bottom: .3rem; font-size: .8rem; gap: .5rem; flex-wrap: wrap; }
-    .account-item .manage { display: flex; gap: .3rem; align-items: center; }
-    .account-item .manage input { width: 60px; padding: .2rem .3rem; font-size: .75rem; }
-    .footer-note { text-align: center; font-size: .75rem; color: var(--text3); margin-top: 2rem; padding: 1rem 0; border-top: 1px solid var(--border); }
-    .inline-flex { display: flex; gap: .4rem; flex-wrap: wrap; align-items: center; }
-    .mt-1 { margin-top: .6rem; }
-    .mb-1 { margin-bottom: .6rem; }
-    @media(max-width:768px){ .admin-body { padding: 1rem; } .status-item { min-width: 100%; } .blacklist-form { flex-direction: column; } .blacklist-form select { width: 100%; } }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GIOAI Admin</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0a0a0f;color:#e0e0e0;font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;flex-direction:column;gap:20px;padding:20px}
+h1{color:#00d4ff}
+.btn{display:inline-flex;padding:12px 28px;background:#00d4ff;color:#000;border:none;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer;text-decoration:none}
+.btn:hover{filter:brightness(1.1)}
+p{color:#606080;max-width:400px;text-align:center;line-height:1.6}
+.link{color:#00d4ff;text-decoration:underline;margin-top:12px;display:inline-block}
+.link:hover{color:#00ff41}
+</style>
 </head>
 <body>
-  <div class="admin-body">
-
-    <!-- Auth Box -->
-    <div id="adminAuth" class="auth-box">
-      <h1>GIOAI</h1>
-      <div class="admin-section">
-        <h2>Admin Login</h2>
-        <input type="password" id="adminPass" placeholder="Enter admin password" autocomplete="off">
-        <div id="adminError" class="admin-error">Invalid password. Try again.</div>
-        <button id="adminLoginBtn" class="btn btn-primary" style="margin-top:.4rem;width:100%">Access Panel</button>
-      </div>
-    </div>
-
-    <!-- Admin Panel -->
-    <div id="adminPanel" style="display:none">
-      <div class="admin-header">
-        <h1>GIOAI Admin v6.0</h1>
-        <div class="inline-flex">
-          <a href="index.html" class="btn btn-sm">&#x2190; Hub</a>
-          <a href="sparx.html" class="btn btn-sm">Sparx</a>
-          <a href="languagenut.html" class="btn btn-sm">LN</a>
-          <a href="seneca.html" class="btn btn-sm">Seneca</a>
-          <button id="adminLogoutBtn" class="btn btn-sm" style="color:var(--danger)">Logout</button>
-        </div>
-      </div>
-
-      <!-- Statistics -->
-      <div class="admin-section">
-        <h2>Statistics</h2>
-        <div class="stats-row">
-          <div class="stat-card"><span class="num" id="statTotal">0</span><span class="lbl">Tasks Completed</span></div>
-          <div class="stat-card"><span class="num" id="statToday">0</span><span class="lbl">Completed Today</span></div>
-          <div class="stat-card"><span class="num" id="statErrors">0</span><span class="lbl">Total Errors</span></div>
-          <div class="stat-card"><span class="num" id="statPlatforms">0</span><span class="lbl">Platforms</span></div>
-        </div>
-        <div style="font-size:.75rem;color:var(--text3)">Last Refreshed: <span id="timestamp">--</span></div>
-      </div>
-
-      <!-- Bot & Website Status -->
-      <div class="admin-section">
-        <h2>Bot &amp; Website Status</h2>
-        <div style="display:flex;gap:.6rem;flex-wrap:wrap">
-          <label style="font-size:.8rem;color:var(--text2);display:flex;align-items:center;gap:.4rem;flex-wrap:wrap">
-            Global Bot Status:
-            <select id="globalBotStatus">
-              <option value="online">Online</option>
-              <option value="offline">Offline</option>
-              <option value="maintenance">Maintenance</option>
-            </select>
-          </label>
-          <label style="font-size:.8rem;color:var(--text2);display:flex;align-items:center;gap:.4rem;flex-wrap:wrap">
-            Website Status:
-            <select id="websiteStatusSelect">
-              <option value="online">Online</option>
-              <option value="offline">Offline</option>
-              <option value="maintenance">Maintenance</option>
-            </select>
-          </label>
-        </div>
-      </div>
-
-      <!-- Platform Status Management -->
-      <div class="admin-section">
-        <h2>Platform Status Management</h2>
-        <div id="platformStatusGrid" class="status-grid"></div>
-        <div class="inline-flex mt-1">
-          <button id="saveStatusBtn" class="btn btn-primary btn-sm">Save Status</button>
-          <button id="refreshBtn" class="btn btn-sm">Refresh</button>
-          <button id="resetDefaultsBtn" class="btn btn-sm">Reset to Defaults</button>
-        </div>
-      </div>
-
-      <!-- Blacklist with Password -->
-      <div class="admin-section">
-        <h2>Account Blacklist (User + Platform + Password)</h2>
-        <p style="font-size:.8rem;color:var(--text3);margin-bottom:.6rem">Block a user from specific platforms. You can optionally require a specific password to match. Click platform tags to toggle.</p>
-        <div class="blacklist-form">
-          <input type="text" id="blacklistInput" placeholder="Username to blacklist">
-          <input type="text" id="blacklistPassInput" placeholder="Password (optional)" style="max-width:150px">
-          <select id="blacklistPlatformSelect">
-            <option value="all">All Platforms</option>
-            <option value="languagenut">LanguageNut</option>
-            <option value="sparx">Sparx Maths</option>
-            <option value="seneca">Seneca Learning</option>
-          </select>
-          <button id="addBlacklistBtn" class="btn btn-primary btn-sm">Blacklist</button>
-        </div>
-        <div id="blacklistContainer" style="margin-top:.6rem">
-          <div class="empty-state">No users blacklisted.</div>
-        </div>
-      </div>
-
-      <!-- Saved Accounts Management -->
-      <div class="admin-section">
-        <h2>Saved Accounts Management</h2>
-        <p style="font-size:.8rem;color:var(--text3);margin-bottom:.6rem">View and manage saved accounts per platform, increase uses, or delete.</p>
-        <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.6rem">
-          <select id="accountsPlatformSelect" style="max-width:200px">
-            <option value="sparx">Sparx Maths</option>
-            <option value="languagenut">LanguageNut</option>
-            <option value="seneca">Seneca Learning</option>
-          </select>
-          <button id="refreshAccountsBtn" class="btn btn-sm">Refresh</button>
-        </div>
-        <div id="accountsContainer">
-          <div class="empty-state">No saved accounts for this platform.</div>
-        </div>
-      </div>
-
-      <!-- Increase Account Uses -->
-      <div class="admin-section">
-        <h2>Increase Account Uses</h2>
-        <p style="font-size:.8rem;color:var(--text3);margin-bottom:.6rem">Add extra uses to a specific saved account.</p>
-        <div class="inline-flex">
-          <select id="increasePlatformSelect" style="max-width:150px">
-            <option value="sparx">Sparx</option>
-            <option value="languagenut">LanguageNut</option>
-            <option value="seneca">Seneca</option>
-          </select>
-          <input type="text" id="increaseUsernameInput" placeholder="Username" style="max-width:150px">
-          <input type="number" id="increaseAmountInput" placeholder="Amount" value="10" style="max-width:80px" min="1">
-          <button id="increaseUsesBtn" class="btn btn-primary btn-sm">Add Uses</button>
-        </div>
-        <div id="increaseResult" style="font-size:.8rem;color:var(--success);margin-top:.4rem;display:none"></div>
-      </div>
-
-      <!-- Activity Logs -->
-      <div class="admin-section">
-        <h2>Activity Logs</h2>
-        <div class="log-tabs" id="logTabs">
-          <span class="tab active" data-filter="all">All</span>
-          <span class="tab" data-filter="success">Success</span>
-          <span class="tab" data-filter="error">Errors</span>
-          <span class="tab" data-filter="warning">Warnings</span>
-          <span class="tab" data-filter="info">Info</span>
-        </div>
-        <div class="log-tabs" id="logPlatformTabs">
-          <span class="tab active" data-platform="all">All</span>
-          <span class="tab" data-platform="languagenut">LanguageNut</span>
-          <span class="tab" data-platform="sparx">Sparx</span>
-          <span class="tab" data-platform="seneca">Seneca</span>
-          <span class="tab" data-platform="general">General</span>
-        </div>
-        <div class="log-content" id="logContent">
-          <div style="color:var(--text3)">No logs yet.</div>
-        </div>
-        <button id="clearLogsBtn" class="btn btn-sm mt-1">Clear All Logs</button>
-      </div>
-
-      <!-- Announcements / Changelogs -->
-      <div class="admin-section">
-        <h2>Announcements &amp; Changelogs</h2>
-        <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.4rem">
-          <input type="text" id="announceInput" placeholder="Write an announcement..." style="flex:1">
-          <select id="announceTypeSelect" style="max-width:140px">
-            <option value="announcement">Announcement</option>
-            <option value="changelog">Changelog</option>
-          </select>
-          <button id="postAnnounceBtn" class="btn btn-primary btn-sm">Post</button>
-          <button id="clearAnnounceBtn" class="btn btn-sm">Clear All</button>
-        </div>
-        <div id="announceContainer" style="margin-top:.6rem"></div>
-      </div>
-
-      <div class="footer-note">
-        GIOAI v6.0 &mdash; Multi-Platform Autocompleter &bull; Hosting: GitHub Pages &bull; Admin Panel: Active
-      </div>
-    </div>
-  </div>
-
-  <script src="admin.js"></script>
+<h1>GIOAI Admin</h1>
+<div style="text-align:center">
+  <p>Admin panel is now integrated into the main application.</p>
+  <p>Go to the main page, open sidebar &rarr; Admin, and use your password to authenticate.</p>
+  <a href="index.html" class="btn">Go to Main App</a>
+  <a href="index.html" class="link">Or click here to open main app</a>
+</div>
 </body>
 </html>
 

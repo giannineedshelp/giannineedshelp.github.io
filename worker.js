@@ -192,6 +192,47 @@ async function sparxGetToken(schoolId) {
   return null;
 }
 
+async function sparxExchangeCookies(cookieString) {
+  try {
+    // Try to extract token from cookies by making an API call to Sparx
+    var resp = await fetch('https://api.sparx-learning.com/auth/validate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': cookieString,
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Origin': 'https://maths.sparx-learning.com'
+      },
+      body: JSON.stringify({})
+    });
+    if (resp.ok) {
+      var d = await resp.json();
+      if (d.token || d.access_token) return d.token || d.access_token;
+    }
+    
+    // Try direct token endpoint with cookies
+    var resp2 = await fetch('https://api.sparx-learning.com/oauth2/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Cookie': cookieString,
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      },
+      body: new URLSearchParams({ 'grant_type': 'client_credentials', 'client_id': 'sparx-maths-web' })
+    });
+    if (resp2.ok) {
+      var d2 = await resp2.json();
+      if (d2.access_token) return d2.access_token;
+    }
+    
+    // Fallback: parse the spxlrn_session cookie value
+    var match = cookieString.match(/spxlrn_session=([^;]+)/);
+    if (match && match[1]) return match[1];
+    
+    return null;
+  } catch(e) { return null; }
+}
+
 // ===== USER AGENTS =====
 var UAs = [
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
@@ -432,6 +473,32 @@ addEventListener('fetch', function(event) {
       } catch(e) { return json({ error: e.message }, 502); }
     }
 
+    // ===== SPARX COOKIE EXCHANGE =====
+    if (path === '/api/sparx/exchange' && req.method === 'POST') {
+      trackUsage(path, ip);
+      b = await req.json();
+      if (!b.cookies) return json({ error: 'cookies required' }, 400);
+      try {
+        var token = await sparxExchangeCookies(b.cookies);
+        if (token) {
+          return json({
+            authToken: token, token: token, session_id: '',
+            username: 'Sparx User',
+            message: 'Cookies exchanged for token successfully'
+          });
+        }
+        return json({ error: 'Failed to extract token from cookies. Cookies may be expired.' }, 401);
+      } catch(e) { return json({ error: 'Exchange error: ' + e.message }, 502); }
+    }
+
+    // ===== SPARX MANUAL AUTH =====
+    if (path === '/api/sparx/manual-auth' && req.method === 'POST') {
+      trackUsage(path, ip);
+      b = await req.json();
+      if (!b.token) return json({ error: 'token required' }, 400);
+      return json({ token: b.token, session_id: '', username: 'Sparx User', message: 'Manual token set' });
+    }
+
     // ===== SPARX LOGIN (TOKEN ACQUISITION) =====
     if (path === '/api/sparx/login' && req.method === 'POST') {
       trackUsage(path, ip);
@@ -614,6 +681,34 @@ addEventListener('fetch', function(event) {
       } catch(e) { return json({ error: e.message }, 502); }
     }
 
+    // ===== SENECA ASSIGNMENTS (alternate fetch) =====
+    if (path === '/api/seneca/assignments' && req.method === 'POST') {
+      trackUsage(path, ip);
+      b = await req.json();
+      if (!b.idToken) return json({ error: 'idToken required' }, 400);
+      try {
+        var resp = await fetch('https://assignments.app.senecalearning.com/api/assignments', {
+          headers: { 'access-key': b.idToken, 'User-Agent': randomUA(), 'Origin': 'https://app.senecalearning.com' }
+        });
+        if (!resp.ok) return json({ error: 'Failed to fetch assignments' }, 401);
+        return json({ assignments: await resp.json() });
+      } catch(e) { return json({ error: e.message }, 502); }
+    }
+
+    // ===== SENECA COMPLETE (mark assignment as done) =====
+    if (path === '/api/seneca/complete' && req.method === 'POST') {
+      trackUsage(path, ip);
+      b = await req.json();
+      if (!b.idToken || !b.courseId) return json({ error: 'idToken and courseId required' }, 400);
+      try {
+        var resp = await fetch('https://assignments.app.senecalearning.com/api/assignments/' + (b.sectionId || b.courseId) + '/complete', {
+          method: 'POST',
+          headers: { 'access-key': b.idToken, 'User-Agent': randomUA(), 'Content-Type': 'application/json', 'Origin': 'https://app.senecalearning.com' }
+        });
+        return json(resp.ok ? { success: true } : { error: 'Complete failed: ' + resp.status }, resp.ok ? 200 : 401);
+      } catch(e) { return json({ error: e.message }, 502); }
+    }
+
     // ===== LANGUAGENUT LOGIN =====
     if (path === '/api/lnut/login' && req.method === 'POST') {
       trackUsage(path, ip);
@@ -731,5 +826,7 @@ addEventListener('fetch', function(event) {
     return json({ error: 'Not found', path: path }, 404);
   })(event.request));
 });
+
+
 
 

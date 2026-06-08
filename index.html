@@ -11,7 +11,7 @@
 <!-- ===== TOAST CONTAINER ===== -->
 <div id="toastContainer"></div>
 
-<!-- ===== LOADING SCREEN (App Start) ===== -->
+<!-- ===== LOADING SCREEN ===== -->
 <div id="appLoading" class="screen active">
   <div class="boot-container">
     <div class="boot-logo">
@@ -30,7 +30,7 @@
   </div>
 </div>
 
-<!-- ===== PLATFORM LOADING SCREENS ===== -->
+<!-- ===== PLATFORM LOADING OVERLAY ===== -->
 <div id="platformLoading" class="overlay" style="display:none">
   <div class="platform-loading-box">
     <div class="pl-logo" id="plLogo">
@@ -50,127 +50,8 @@
         <polygon points="50,10 90,30 90,70 50,90 10,70 10,30" fill="none" stroke="#00ff41" stroke-width="4" stroke-dasharray="240" stroke-dashoffset="240" class="pl-spin-ring"/>
       </svg>
     </div>
-    <div class="pl-text" id="plText">Loading platform...</div>
+    <div class="pl-text" id="plText">Logging in...</div>
     <div class="pl-sub" id="plSub">Please wait</div>
-  </div>
-</div>
-
-<!-- ===== DISCLAIMER ===== -->
-<div id="disclaimer" class="screen">
-  <div class="disclaimer-box">
-    <div class="disclaimer-icon">&#9888;</div>
-    <h2>Disclaimer</h2>
-    <p>GIOAI is an educational automation tool. Use responsibly and in accordance with your institution's policies. Automated completion of assignments may violate terms of service.</p>
-    <label class="disclaimer-check">
-      <input type="checkbox" id="disclaimerAgree">
-      <span>I understand and accept the risks</span>
-    </label>
-    <button id="disclaimerContinue" class="btn" disabled>Continue</button>
-  </div>
-</div>
-
-<!-- ===== CHANGELOG OVERLAY ===== -->
-<div id="changelogOverlay" class="overlay">
-  <div class="changelog-modal">
-    <div class="changelog-header">
-      <h2>What's New</h2>
-      <button id="changelogClose" class="btn-icon">&times;</button>
-    </div>
-    <div class="changelog-body" id="changelogBody">
-      <div class="changelog-placeholder">Loading changelog...</div>
-    </div>
-    <div class="changelog-footer">
-      <button id="changelogDismiss" class="btn">Got it!</button>
-    </div>
-  </div>
-</div>
-
-<!-- ===== NOTIFICATIONS OVERLAY ===== -->
-<div id="notifOverlay" class="overlay">
-  <div class="notif-modal">
-    <div class="notif-header">
-      <h2>Notifications & Help</h2>
-      <button id="notifClose" class="btn-icon">&times;</button>
-    </div>
-    <div class="notif-body">
-      <div class="notif-tabs">
-        <button class="notif-tab active" data-tab="tutorial">Tutorial</button>
-        <button class="notif-tab" data-tab="changelog">Changelog</button>
-        <button class="notif-tab" data-tab="announcements">Announcements</button>
-      </div>
-      <div class="notif-content">
-        <div class="notif-pane" id="announcementsPane"><div class="announcement-list" id="announcementList"><div class="empty-state">No announcements</div></div></div>
-        <div class="notif-pane active" id="tutorialPane">
-          <div class="tutorial-guide">
-            <h3>Quick Start Guide</h3>
-            <div class="tutorial-step"><span class="step-num">1</span><div><strong>Select Platform</strong> - Choose LN, Seneca, or Sparx from the hub</div></div>
-            <div class="tutorial-step"><span class="step-num">2</span><div><strong>Login</strong> - Enter your credentials. For Sparx, search your school first.</div></div>
-            <div class="tutorial-step"><span class="step-num">3</span><div><strong>Configure</strong> - Set fake timing, delays, and toggle past homework / working out</div></div>
-            <div class="tutorial-step"><span class="step-num">4</span><div><strong>Fetch & Complete</strong> - Load tasks, check what you want, click Start</div></div>
-          </div>
-        </div>
-        <div class="notif-pane" id="changelogPane">
-          <div class="changelog-list" id="changelogList"></div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ===== HUB SCREEN ===== -->
-<div id="hubScreen" class="screen">
-  <header class="hub-header">
-    <div class="hub-header-left">
-      <button id="hamburgerBtn" class="btn-icon hamburger" aria-label="Menu">
-        <span></span><span></span><span></span>
-      </button>
-      <h1 class="hub-title"><span class="glitch-sm" data-text="GIOAI">GIOAI</span> <span class="hub-ver">v<span id="appVersion">2.5</span></span></h1>
-    </div>
-    <div class="hub-header-right">
-      <button id="notifBell" class="btn-icon notif-bell" aria-label="Notifications">
-        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
-        <span id="notifBadge" class="notif-badge">1</span>
-      </button>
-    </div>
-  </header>
-
-  <div class="hub-cards">
-    <div class="hub-card" data-platform="languagenut" style="--card-color:#00d4ff;--card-bg:rgba(0,212,255,0.05)">
-      <div class="card-icon">
-        <svg viewBox="0 0 100 100" width="48" height="48"><circle cx="50" cy="50" r="40" fill="none" stroke="#00d4ff" stroke-width="3"/><text x="50" y="56" text-anchor="middle" fill="#00d4ff" font-size="24" font-weight="bold">LN</text></svg>
-      </div>
-      <div class="card-title">LanguageNut</div>
-      <div class="card-desc">Homework autocompleter with captcha bypass</div>
-      <div class="card-status" id="hubStatus-ln">Checking...</div>
-    </div>
-    <div class="hub-card" data-platform="seneca" style="--card-color:#ff6e40;--card-bg:rgba(255,110,64,0.05)">
-      <div class="card-icon">
-        <svg viewBox="0 0 100 100" width="48" height="48"><rect x="10" y="20" width="80" height="60" rx="8" fill="none" stroke="#ff6e40" stroke-width="3"/><text x="50" y="56" text-anchor="middle" fill="#ff6e40" font-size="20" font-weight="bold">SE</text></svg>
-      </div>
-      <div class="card-title">Seneca Learning</div>
-      <div class="card-desc">Course & assignment autocompleter</div>
-      <div class="card-status" id="hubStatus-se">Checking...</div>
-    </div>
-    <div class="hub-card" data-platform="sparx" style="--card-color:#00ff41;--card-bg:rgba(0,255,65,0.05)">
-      <div class="card-icon">
-        <svg viewBox="0 0 100 100" width="48" height="48"><polygon points="50,10 90,30 90,70 50,90 10,70 10,30" fill="none" stroke="#00ff41" stroke-width="3"/><text x="50" y="56" text-anchor="middle" fill="#00ff41" font-size="18" font-weight="bold">SX</text></svg>
-      </div>
-      <div class="card-title">Sparx Maths</div>
-      <div class="card-desc">Maths homework with AI working out</div>
-      <div class="card-status" id="hubStatus-sp">Checking...</div>
-    </div>
-  </div>
-
-  <div class="hub-footer-social">
-    <a href="https://github.com/giannineedshelp" target="_blank" class="social-link">
-      <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
-    </a>
-    <a href="https://discord.gg/gioai" target="_blank" class="social-link">
-      <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 00-4.885-1.515.074.074 0 00-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 00-5.487 0 12.64 12.64 0 00-.617-1.25.077.077 0 00-.079-.037A19.736 19.736 0 003.677 4.37a.07.07 0 00-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 00.031.057 19.9 19.9 0 005.993 3.03.078.078 0 00.084-.028 14.09 14.09 0 001.226-1.994.076.076 0 00-.041-.106 13.107 13.107 0 01-1.872-.892.077.077 0 01-.008-.128 10.2 10.2 0 00.372-.292.074.074 0 01.077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 01.078.01c.12.098.246.198.373.292a.077.077 0 01-.006.127 12.299 12.299 0 01-1.873.892.077.077 0 00-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 00.084.028 19.839 19.839 0 006.002-3.03.077.077 0 00.032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 00-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>
-    </a>
-    <a href="https://www.paypal.me/giannikeita" target="_blank" class="social-link">
-      <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M7.076 21.337H2.47a.641.641 0 01-.633-.74L4.944.901C5.026.382 5.474 0 5.998 0h7.46c2.57 0 4.578.543 5.69 1.81 1.01 1.15 1.304 2.42 1.012 4.287-.023.143-.047.288-.077.437-.983 5.05-4.349 6.797-8.647 6.797h-2.19c-.524 0-.968.382-1.05.9l-1.12 7.106z"/></svg>
-    </a>
   </div>
 </div>
 
@@ -178,162 +59,166 @@
 <div id="sidebarOverlay" class="sidebar-overlay"></div>
 <nav id="sidebar" class="sidebar">
   <div class="sidebar-header">
-    <span class="sidebar-logo">GIOAI</span>
-    <button id="sidebarClose" class="btn-icon">&times;</button>
+    <div class="sidebar-logo">GIOAI</div>
+    <div class="sidebar-version" id="sidebarVersion">v0</div>
+    <button id="sidebarClose" class="sidebar-close">&times;</button>
   </div>
   <div class="sidebar-user">
-    <div class="sidebar-avatar" id="sidebarAvatar">G</div>
-    <div class="sidebar-user-info">
-      <div class="sidebar-user-name" id="sidebarUserName">Guest</div>
-      <div class="sidebar-user-platform" id="sidebarUserPlatform">Not logged in</div>
-    </div>
+    <div class="sidebar-user-name" id="sidebarUserName">Guest</div>
+    <div class="sidebar-user-platform" id="sidebarUserPlatform"></div>
   </div>
   <div class="sidebar-links">
-    <a href="#" class="sidebar-link active" data-screen="hubScreen"><span class="sl-icon">&#9679;</span> Hub</a>
-    <a href="#" class="sidebar-link" data-screen="settingsScreen"><span class="sl-icon">&#9881;</span> Settings</a>
-    <a href="#" class="sidebar-link" data-screen="statusScreen"><span class="sl-icon">&#9888;</span> Status</a>
-    <a href="#" class="sidebar-link" data-screen="donateScreen"><span class="sl-icon">&#9829;</span> Donate</a>
-    <a href="#" class="sidebar-link" data-screen="adminScreen"><span class="sl-icon">&#9762;</span> Admin</a>
+    <button class="sidebar-link" data-screen="hub"><span class="sl-icon">&#9776;</span> Hub</button>
+    <button class="sidebar-link" data-screen="status"><span class="sl-icon">&#9881;</span> Status</button>
+    <button class="sidebar-link" data-screen="admin"><span class="sl-icon">&#128274;</span> Admin</button>
+    <button class="sidebar-link" data-screen="donate"><span class="sl-icon">&#9829;</span> Support</button>
   </div>
   <div class="sidebar-footer">
-    <div class="sidebar-theme-selector">
-      <button class="theme-btn active" data-theme="dark" title="Dark">&#9789;</button>
-      <button class="theme-btn" data-theme="hacker" title="Hacker">&#9760;</button>
-      <button class="theme-btn" data-theme="light" title="Light">&#9788;</button>
-      <button class="theme-btn" data-theme="neon" title="Neon">&#9889;</button>
-    </div>
-    <div class="sidebar-ver">v<span id="sidebarVersion">2.5</span></div>
+    <span id="workerStatusBadge" class="status-badge">Checking...</span>
   </div>
 </nav>
+
+<!-- ===== HAMBURGER ===== -->
+<button id="hamburgerBtn" class="hamburger">&#9776;</button>
+
+<!-- ===== DISCLAIMER ===== -->
+<div id="disclaimer" class="disclaimer-overlay">
+  <div class="disclaimer-box">
+    <h2>Disclaimer</h2>
+    <p>This tool is for educational purposes only. Use at your own risk.</p>
+    <p>By using this tool, you agree that you are responsible for your own actions.</p>
+    <div class="disclaimer-btns">
+      <button id="disclaimerAgree" class="btn btn-primary">I Understand</button>
+      <button id="disclaimerContinue" class="btn btn-success">Continue</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== HUB SCREEN ===== -->
+<div id="hubScreen" class="screen active">
+  <div class="hub-container">
+    <div class="hub-header">
+      <h1>GIOAI</h1>
+      <p class="hub-subtitle">Homework Autocomplete Platform</p>
+      <div class="hub-stats">
+        <div class="hub-stat"><span class="hub-stat-val" id="queueTotal">0</span><span class="hub-stat-lbl">Queue</span></div>
+        <div class="hub-stat"><span class="hub-stat-val" id="queueStatus">Idle</span><span class="hub-stat-lbl">Status</span></div>
+      </div>
+    </div>
+    <div class="hub-cards">
+      <div class="hub-card" data-platform="languagenut">
+        <div class="hc-icon" style="color:#00d4ff">LN</div>
+        <div class="hc-title">LanguageNut</div>
+        <div class="hc-desc">Complete language assignments</div>
+        <div class="hc-status online">Online</div>
+      </div>
+      <div class="hub-card" data-platform="seneca">
+        <div class="hc-icon" style="color:#ff6e40">SE</div>
+        <div class="hc-title">Seneca</div>
+        <div class="hc-desc">Complete Seneca Learning tasks</div>
+        <div class="hc-status online">Online</div>
+      </div>
+      <div class="hub-card" data-platform="sparx">
+        <div class="hc-icon" style="color:#00ff41">SX</div>
+        <div class="hc-title">Sparx</div>
+        <div class="hc-desc">Complete Sparx Maths homework</div>
+        <div class="hc-status online">Online</div>
+      </div>
+    </div>
+    <div class="hub-announcements">
+      <div class="hub-announcements-header">
+        <h3>Announcements</h3>
+        <button id="notifBell" class="btn-icon">&#128276;</button>
+        <span id="notifBadge" class="notif-badge" style="display:none">0</span>
+      </div>
+      <div id="announcementList" class="announcement-list"><div class="empty-state">No announcements</div></div>
+    </div>
+  </div>
+</div>
 
 <!-- ===== PLATFORM LOGIN SCREEN ===== -->
 <div id="platformLoginScreen" class="screen">
   <div class="login-container">
     <div class="login-header">
       <button id="backToHub" class="btn-icon">&larr;</button>
-      <h2 id="platformLoginTitle">Login</h2>
-      <div class="login-platform-badge" id="loginPlatformBadge"></div>
+      <div id="platformLoginTitle" class="login-title">Login</div>
+      <div id="loginPlatformBadge" class="login-platform-badge">?</div>
     </div>
-    <div class="login-status" id="loginStatus" style="display:none">
-      <span id="loginStatusText"></span>
-    </div>
-    <div class="form-group">
-      <label for="platformUsername">Username / Email</label>
-      <input type="text" id="platformUsername" placeholder="Enter your username" autocomplete="off">
-    </div>
-    <div class="form-group">
-      <label for="platformPassword">Password</label>
-      <input type="password" id="platformPassword" placeholder="Enter your password" autocomplete="off">
-    </div>
-    <!-- School Search (Sparx) -->
-    <div class="sparx-extra" id="sparxLoginExtra" style="display:none">
+    <div class="login-body">
       <div class="form-group">
-        <label>Search School</label>
-        <div class="school-search-wrapper">
-          <input type="text" id="sparxSchoolSearch" placeholder="Type school name..." autocomplete="off">
-          <div class="school-results" id="sparxSchoolResults"></div>
-        </div>
+        <label id="loginUsernameLabel">Username</label>
+        <input type="text" id="platformUsername" placeholder="Username" autocomplete="off">
       </div>
       <div class="form-group">
-        <label>School ID</label>
-        <input type="text" id="sparxSchoolId" placeholder="Select or enter school ID" value="1">
+        <label>Password</label>
+        <input type="password" id="platformPassword" placeholder="&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;" autocomplete="off">
+      </div>
+      <div id="senecaLoginExtra" class="login-extra" style="display:none">
+        <div class="tip">Use your Seneca email & password to login via Firebase</div>
+      </div>
+      <div id="sparxLoginExtra" class="login-extra" style="display:none">
+        <div class="tip">Sparx uses school-based login. Use the Sparx Maths tab in sparx-auto.html</div>
+      </div>
+      <button id="platformLoginBtn" class="btn btn-primary btn-block">Login</button>
+      <div id="loginStatus" class="login-status" style="display:none">
+        <span id="loginStatusText"></span>
       </div>
     </div>
-    <!-- Sparx Manual Token (shown when auto-login fails) -->
-    <div class="sparx-extra" id="sparxManualTokenGroup" style="display:none">
-      <div class="form-group">
-        <label>Manual Token</label>
-        <input type="text" id="sparxManualToken" placeholder="Paste your Sparx API token here" autocomplete="off">
-      </div>
-      <button id="sparxManualTokenBtn" class="btn btn-small">Set Token</button>
-      <div class="login-hint">Get your token from Sparx Maths &gt; Dev Tools &gt; Network tab</div>
-    </div>
-    <!-- Seneca extra -->
-    <div class="seneca-extra" id="senecaLoginExtra" style="display:none">
-      <div class="form-group">
-        <label>Login Method</label>
-        <select id="senecaLoginMethod">
-          <option value="email">Email & Password</option>
-          <option value="google">Google (redirect)</option>
-          <option value="microsoft">Microsoft (redirect)</option>
-        </select>
-      </div>
-    </div>
-    <button id="platformLoginBtn" class="btn btn-primary">Authenticate</button>
-    <button id="platformLoginBtnSmall" class="btn btn-small" style="display:none">Use Small Login</button>
-    <div class="login-hint">Press Enter to submit</div>
   </div>
 </div>
 
-<!-- ===== PLATFORM DASHBOARD ===== -->
+<!-- ===== DASHBOARD SCREEN ===== -->
 <div id="dashboardScreen" class="screen">
-  <div class="dash-header">
-    <div class="dash-user">
-      <span class="status-dot offline" id="dashStatusDot"></span>
-      <span id="dashUserDisplay">Not logged in</span>
-    </div>
-    <div class="dash-actions">
-      <span id="dashPlatformBadge" class="platform-badge"></span>
-      <button id="dashSettingsBtn" class="btn-icon" title="Settings">&#9881;</button>
-      <button id="dashLogoutBtn" class="btn-icon" title="Logout">&times;</button>
-    </div>
-  </div>
-
-  <!-- Platform-specific settings bar -->
-  <div class="platform-settings-bar" id="platformSettingsBar">
-    <div class="ps-group">
-      <label>Min Delay</label>
-      <input type="range" id="psDelayMin" min="1" max="30" value="5" step="0.5">
-      <span id="psDelayMinVal">5s</span>
-    </div>
-    <div class="ps-group">
-      <label>Max Delay</label>
-      <input type="range" id="psDelayMax" min="1" max="30" value="8" step="0.5">
-      <span id="psDelayMaxVal">8s</span>
-    </div>
-    <div class="ps-group" id="psFakeTimeGroup">
-      <label>Fake Time</label>
-      <input type="range" id="psFakeTime" min="0" max="12" value="4" step="0.1">
-      <span id="psFakeTimeVal">10,000s</span>
-    </div>
-    <div class="ps-group">
-      <label class="toggle-label">
-        <input type="checkbox" id="psShowPrevHmwk">
-        <span>Prev Homework</span>
-      </label>
-    </div>
-    <div class="ps-group" id="psShowWorkingGroup">
-      <label class="toggle-label">
-        <input type="checkbox" id="psShowWorking" checked>
-        <span>Show Working</span>
-      </label>
-    </div>
-  </div>
-
-  <!-- Tasks area -->
-  <div class="dash-main">
-    <div class="dash-controls">
-      <button id="dashFetchBtn" class="btn">Fetch Tasks</button>
-      <button id="dashStartBtn" class="btn btn-primary">Start All</button>
-      <button id="dashStopBtn" class="btn btn-danger" disabled>Stop</button>
-    </div>
-    <div class="dash-progress">
-      <div class="progress-bar-bg">
-        <div class="progress-fill" id="dashProgressFill" style="width:0%"></div>
+  <div class="dash-container">
+    <div class="dash-header">
+      <div class="dash-user">
+        <span id="dashStatusDot" class="status-dot"></span>
+        <span id="dashUserDisplay">User</span>
+        <span id="dashPlatformBadge" class="dash-platform-badge">?</span>
       </div>
-      <span id="dashProgressText">0 / 0 tasks (0%)</span>
+      <div class="dash-actions">
+        <button id="dashSettingsBtn" class="btn-icon">&#9881;</button>
+      </div>
     </div>
     <div class="dash-stats">
-      <div class="stat-box"><span class="stat-label">Completed</span><span class="stat-value" id="dashStatCompleted">0</span></div>
-      <div class="stat-box"><span class="stat-label">XP/Score</span><span class="stat-value" id="dashStatXp">0</span></div>
-      <div class="stat-box"><span class="stat-label">Errors</span><span class="stat-value" id="dashStatErrors">0</span></div>
+      <div class="dash-stat"><span class="dash-stat-val" id="dashStatCompleted">0</span><span class="dash-stat-lbl">Done</span></div>
+      <div class="dash-stat"><span class="dash-stat-val" id="dashStatXp">0</span><span class="dash-stat-lbl">XP</span></div>
+      <div class="dash-stat"><span class="dash-stat-val" id="dashStatErrors">0</span><span class="dash-stat-lbl">Errors</span></div>
+    </div>
+    <div class="dash-controls">
+      <button id="dashFetchBtn" class="btn btn-success">Fetch Tasks</button>
+      <button id="dashStartBtn" class="btn btn-primary" disabled>Start</button>
+      <button id="dashStopBtn" class="btn btn-danger" disabled>Stop</button>
+      <button id="dashLogoutBtn" class="btn btn-sm" style="background:var(--bg3);color:var(--text2);border:1px solid var(--border)">Logout</button>
+    </div>
+    <div class="dash-progress">
+      <div class="progress-bar"><div class="progress-fill" id="dashProgressFill"></div></div>
+      <div class="progress-text" id="dashProgressText"></div>
     </div>
     <div class="dash-tasks" id="dashTasks">
-      <div class="empty-state">Click "Fetch Tasks" to load assignments</div>
+      <div class="empty-state">Login and click Fetch Tasks</div>
     </div>
     <div class="dash-log" id="dashLog">
       <div class="log-header">Activity Log</div>
-      <div class="log-entries" id="dashLogEntries"></div>
+      <div class="log-entries" id="dashLogEntries">
+        <div class="log-entry log-info">→ System ready</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== STATUS SCREEN ===== -->
+<div id="statusScreen" class="screen">
+  <div class="status-container">
+    <div class="status-header">
+      <h2>System Status</h2>
+      <div>
+        <button id="statusRefreshBtn" class="btn-icon" onclick="loadStatusPage()">&#8635;</button>
+        <button class="btn-icon" onclick="showScreen('hubScreen')">&times;</button>
+      </div>
+    </div>
+    <div class="status-body" id="statusContent">
+      <div class="empty-state">Loading status...</div>
     </div>
   </div>
 </div>
@@ -353,61 +238,15 @@
           <button class="theme-btn-lg" data-theme="hacker">Hacker</button>
           <button class="theme-btn-lg" data-theme="light">Light</button>
           <button class="theme-btn-lg" data-theme="neon">Neon</button>
+          <button class="theme-btn-lg" data-theme="ocean">Ocean</button>
+          <button class="theme-btn-lg" data-theme="sunset">Sunset</button>
         </div>
       </div>
       <div class="settings-section">
-        <h3>Default Delays</h3>
-        <div class="setting-row"><label>Min Delay (seconds)</label><input type="number" id="settingsDelayMin" min="1" max="60" value="5"></div>
-        <div class="setting-row"><label>Max Delay (seconds)</label><input type="number" id="settingsDelayMax" min="1" max="60" value="8"></div>
+        <h3>Usage</h3>
+        <div class="setting-row"><label>Remaining uses today:</label><span id="settingsRemainingUses">2</span></div>
+        <div class="setting-row"><label>Bonus uses:</label><span id="settingsBonusUses">0</span></div>
       </div>
-      <div class="settings-section">
-        <h3>Working Out</h3>
-        <div class="setting-row"><label>Show working out for Sparx</label><input type="checkbox" id="settingsShowWorking" checked></div>
-        <div class="setting-row"><label>AI Provider</label>
-          <select id="settingsAiProvider">
-            <option value="auto">Auto (random)</option>
-            <option value="gemini">Gemini</option>
-            <option value="groq">Groq</option>
-            <option value="mistral">Mistral</option>
-          </select>
-        </div>
-      </div>
-      <div class="settings-section">
-        <h3>Notifications</h3>
-        <div class="setting-row"><label>Notify on batch complete</label><input type="checkbox" id="settingsNotifComplete" checked></div>
-        <div class="setting-row"><label>Notify on errors</label><input type="checkbox" id="settingsNotifError" checked></div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ===== STATUS SCREEN ===== -->
-<div id="statusScreen" class="screen">
-  <div class="status-container">
-    <div class="status-header">
-      <h2>System Status</h2>
-      <div>
-        <button id="statusRefreshBtn" class="btn-icon" onclick="loadStatusPage()">&circlearrowleft;</button>
-        <button class="btn-icon" onclick="showScreen('hubScreen')">&times;</button>
-      </div>
-    </div>
-    <div class="status-body" id="statusContent">
-      <div class="empty-state">Press Refresh to check status</div>
-    </div>
-  </div>
-</div>
-
-<!-- ===== DONATE SCREEN ===== -->
-<div id="donateScreen" class="screen">
-  <div class="donate-container">
-    <div class="donate-header">
-      <h2>Support GIOAI</h2>
-      <button id="donateBackBtn" class="btn-icon">&times;</button>
-    </div>
-    <div class="donate-body">
-      <p>GIOAI is free to use. If you find it useful, consider supporting development!</p>
-      <a href="https://www.paypal.me/giannikeita" target="_blank" class="btn btn-paypal">Donate with PayPal</a>
-      <button class="btn" disabled>Card (Coming Soon)</button>
     </div>
   </div>
 </div>
@@ -417,22 +256,16 @@
   <div class="admin-container">
     <div class="admin-header">
       <h2>Admin Panel</h2>
-      <button id="adminBackBtn" class="btn-icon">&times;</button>
+      <button id="adminBackBtn" class="btn-icon" onclick="UI.showScreen('hubScreen')">&times;</button>
     </div>
     <div class="admin-body">
-
-      <!-- Admin Auth -->
       <div id="adminAuthSection" class="admin-section" style="text-align:center">
         <h3>Authenticate</h3>
         <input type="password" id="adminPassword" placeholder="Enter admin password" style="margin-bottom:.6rem;width:100%;max-width:300px">
         <button id="adminLoginBtn" class="btn btn-primary" style="width:100%;max-width:300px">Login</button>
         <div id="adminAuthError" class="admin-result" style="color:var(--danger);margin-top:.4rem;display:none"></div>
       </div>
-
-      <!-- Admin Content (hidden until auth) -->
       <div id="adminContent" style="display:none">
-
-        <!-- Give Slots -->
         <div class="admin-section">
           <h3>Give Slots</h3>
           <div class="form-group"><label>Username</label><input type="text" id="adminUsername" placeholder="Target username"></div>
@@ -441,8 +274,6 @@
           <button id="adminGiveSlotsBtn" class="btn btn-primary">Give Slots</button>
           <div id="adminResult" class="admin-result"></div>
         </div>
-
-        <!-- Platform Status Controls -->
         <div class="admin-section">
           <h3>Platform Status
             <button id="adminCheckPlatformsBtn" class="btn btn-small" style="float:right">Check Now</button>
@@ -466,14 +297,10 @@
             </div>
           </div>
         </div>
-
-        <!-- Announcements -->
         <div class="admin-section">
           <h3>Send Announcement</h3>
-          <div class="form-group">
-            <textarea id="adminAnnouncementMsg" rows="3" placeholder="Write announcement..." style="width:100%"></textarea>
-          </div>
-          <div class="form-group" style="display:flex;gap:8px;align-items:center">
+          <textarea id="adminAnnouncementMsg" rows="3" placeholder="Write announcement..." style="width:100%"></textarea>
+          <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
             <label>Type:</label>
             <select id="adminAnnouncementType">
               <option value="info">Info</option>
@@ -484,26 +311,22 @@
           </div>
           <div id="adminAnnouncementResult" class="admin-result"></div>
         </div>
-
-        <!-- Blacklist -->
         <div class="admin-section">
           <h3>Blacklist Management</h3>
-          <div class="form-group" style="display:flex;gap:8px;align-items:center">
-            <input type="text" id="adminBlacklistUser" placeholder="Username">
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="text" id="adminBlacklistUser" placeholder="Username" style="flex:1">
             <select id="adminBlacklistAction">
               <option value="add">Add</option>
               <option value="remove">Remove</option>
-              <option value="list">List All</option>
+              <option value="list">List</option>
             </select>
             <button id="adminBlacklistBtn" class="btn btn-primary btn-small">Go</button>
           </div>
           <div id="adminBlacklistResult" class="admin-result"></div>
         </div>
-
-        <!-- Platform Status Setter -->
         <div class="admin-section">
           <h3>Set Platform Status</h3>
-          <div class="form-group" style="display:flex;gap:8px;align-items:center">
+          <div style="display:flex;gap:8px;align-items:center">
             <select id="adminStatusPlatform">
               <option value="languagenut">LanguageNut</option>
               <option value="seneca">Seneca</option>
@@ -518,28 +341,75 @@
           </div>
           <div id="adminStatusResult" class="admin-result"></div>
         </div>
-
-        <!-- Worker -->
         <div class="admin-section" style="text-align:center">
           <button id="adminLogoutBtn" class="btn btn-danger" style="width:100%">Logout</button>
         </div>
-
       </div>
     </div>
   </div>
 </div>
 
-<script src="script.js"></script>
+<!-- ===== DONATE SCREEN ===== -->
+<div id="donateScreen" class="screen">
+  <div class="donate-container">
+    <div class="donate-header">
+      <h2>Support GIOAI</h2>
+      <button id="donateBackBtn" class="btn-icon" onclick="UI.showScreen('hubScreen')">&times;</button>
+    </div>
+    <div class="donate-body">
+      <p>GIOAI is free to use. If you find it useful, consider supporting development!</p>
+      <a href="https://www.paypal.me/giannikeita" target="_blank" class="btn btn-paypal">Donate with PayPal</a>
+      <button class="btn" disabled>Card (Coming Soon)</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== CHANGELOG OVERLAY ===== -->
+<div id="changelogOverlay" class="changelog-overlay" style="display:none">
+  <div class="changelog-modal">
+    <div class="changelog-header">
+      <h3>What's New</h3>
+      <button id="changelogClose" class="btn-icon">&times;</button>
+    </div>
+    <div class="changelog-body" id="changelogBody">
+      <div class="empty-state">Loading changes...</div>
+    </div>
+    <div class="changelog-footer">
+      <button id="changelogDismiss" class="btn btn-primary">Got it!</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== NOTIFICATIONS OVERLAY ===== -->
+<div id="notifOverlay" class="notif-overlay" style="display:none">
+  <div class="notif-modal">
+    <div class="notif-header">
+      <h3>Notifications</h3>
+      <button id="notifClose" class="btn-icon">&times;</button>
+    </div>
+    <div class="notif-tabs">
+      <button class="notif-tab active" data-pane="announcements">Announcements</button>
+      <button class="notif-tab" data-pane="changelog">Updates</button>
+    </div>
+    <div class="notif-pane active" id="pane-announcements">
+      <div id="announcementList" class="announcement-list"><div class="empty-state">No announcements</div></div>
+    </div>
+    <div class="notif-pane" id="pane-changelog">
+      <div id="changelogList" class="changelog-list"><div class="empty-state">No updates</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SCRIPTS ===== -->
+<script src="assets/js/config.js"></script>
+<script src="assets/js/utils/api.js"></script>
+<script src="assets/js/utils/ui.js"></script>
+<script src="assets/js/utils/storage.js"></script>
+<script src="assets/js/modules/queue.js"></script>
+<script src="assets/js/modules/sparx.js"></script>
+<script src="assets/js/modules/seneca.js"></script>
+<script src="assets/js/modules/languagenut.js"></script>
+<script src="assets/js/main.js"></script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
 
