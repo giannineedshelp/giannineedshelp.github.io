@@ -239,6 +239,15 @@
         <input type="text" id="sparxSchoolId" placeholder="Select or enter school ID" value="1">
       </div>
     </div>
+    <!-- Sparx Manual Token (shown when auto-login fails) -->
+    <div class="sparx-extra" id="sparxManualTokenGroup" style="display:none">
+      <div class="form-group">
+        <label>Manual Token</label>
+        <input type="text" id="sparxManualToken" placeholder="Paste your Sparx API token here" autocomplete="off">
+      </div>
+      <button id="sparxManualTokenBtn" class="btn btn-small">Set Token</button>
+      <div class="login-hint">Get your token from Sparx Maths &gt; Dev Tools &gt; Network tab</div>
+    </div>
     <!-- Seneca extra -->
     <div class="seneca-extra" id="senecaLoginExtra" style="display:none">
       <div class="form-group">
@@ -523,6 +532,7 @@
 <script src="script.js"></script>
 </body>
 </html>
+
 
 
 

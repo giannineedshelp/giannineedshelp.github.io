@@ -1,7 +1,8 @@
 // ============================================================
-// GIOAI v6.0 - Cloudflare Worker Backend
+// GIOAI v7.0 - Cloudflare Worker Backend
 // Handles: Seneca auth, Sparx auth/gRPC, LanguageNut,
-//          AI solving, Admin, Status, Blacklist, Announcements
+//          AI solving, Admin, Status, Blacklist, Announcements,
+//          Sparx homework auth via token exchange
 // ============================================================
 const CORS = {'Access-Control-Allow-Origin': '*','Access-Control-Allow-Methods': 'GET,POST,OPTIONS','Access-Control-Allow-Headers': 'Content-Type,Authorization,X-GIOAI-Token,X-Admin-Key'};
 function handleOptions(r) { if (r.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS }); }
@@ -87,21 +88,42 @@ async function getSparxSchools() {
 function searchSchools(schools, query) {
   if (!schools) return [];
   var q = query.toLowerCase();
-  // Parse schools from base64 data
-  var raw = atob(schools);
-  var lines = raw.split('\n');
-  var results = [];
-  for (var i = 0; i < lines.length; i++) {
-    var parts = lines[i].split('|');
-    if (parts.length >= 2) {
-      var name = parts[1].trim();
-      var id = parts[0].trim();
+  try {
+    var raw = atob(schools);
+    // Format: JSON array of objects with fields u(short), i(uuid), n(name), t(town), p(products)
+    var list = JSON.parse(raw);
+    var results = [];
+    for (var i = 0; i < list.length; i++) {
+      var item = list[i];
+      var name = (item.n || '').trim();
+      var id = (item.i || '').trim();
       if (name.toLowerCase().includes(q)) {
-        results.push({ id: id, name: name });
+        results.push({
+          id: id || item.u || '',
+          name: name,
+          town: item.t || '',
+          products: Array.isArray(item.p) ? item.p.join(',') : (item.p || '')
+        });
       }
     }
+    return results.slice(0, 15);
+  } catch(e) {
+    // Fallback: try pipe-delimited format
+    var raw = atob(schools);
+    var lines = raw.split('\n');
+    var results = [];
+    for (var i = 0; i < lines.length; i++) {
+      var parts = lines[i].split('|');
+      if (parts.length >= 2) {
+        var name = parts[1].trim();
+        var id = parts[0].trim();
+        if (name.toLowerCase().includes(q)) {
+          results.push({ id: id, name: name, town: parts[2] || '', products: parts[3] || '' });
+        }
+      }
+    }
+    return results.slice(0, 10);
   }
-  return results.slice(0, 10);
 }
 
 // ===== SENECA FIREBASE LOGIN =====
@@ -122,33 +144,60 @@ async function senecaFirebaseLogin(email, password) {
   } catch(e) { return { error: { message: e.message } }; }
 }
 
-// ===== SPARX API TOKEN =====
+// ===== SPARX API TOKEN EXCHANGE =====
+// Tries multiple methods to get a Sparx API token
 async function sparxGetToken(schoolId) {
-  var url = 'https://api.sparx-learning.com/oauth2/token';
-  var headers = {
-    'Content-Type': 'application/x-www-form-urlencoded',
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-    'Origin': 'https://maths.sparx-learning.com',
-    'Referer': 'https://maths.sparx-learning.com/'
-  };
-  var body = new URLSearchParams({
-    'grant_type': 'client_credentials',
-    'client_id': 'sparx-maths-web',
-    'school_id': schoolId
-  });
+  // Method 1: OAuth2 client_credentials
+  var urls = [
+    'https://api.sparx-learning.com/oauth2/token',
+    'https://api.sparx-learning.com/v2/oauth2/token'
+  ];
+  for (var ui = 0; ui < urls.length; ui++) {
+    try {
+      var resp = await fetch(urls[ui], {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'Origin': 'https://maths.sparx-learning.com',
+          'Referer': 'https://maths.sparx-learning.com/',
+          'Accept': 'application/json'
+        },
+        body: new URLSearchParams({
+          'grant_type': 'client_credentials',
+          'client_id': 'sparx-maths-web',
+          'school_id': schoolId
+        })
+      });
+      if (resp.ok) {
+        var d = await resp.json();
+        if (d.access_token) return d.access_token;
+      }
+    } catch(e) {}
+  }
+  
+  // Method 2: Try direct auth endpoint
   try {
-    var resp = await fetch(url, { method: 'POST', headers: headers, body: body });
-    if (!resp.ok) return null;
-    var d = await resp.json();
-    return d.access_token || null;
-  } catch(e) { return null; }
+    var directResp = await fetch('https://api.sparx-learning.com/auth/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0' },
+      body: JSON.stringify({ client_id: 'sparx-maths-web', school_id: schoolId, grant_type: 'client_credentials' })
+    });
+    if (directResp.ok) {
+      var d2 = await directResp.json();
+      if (d2.access_token) return d2.access_token;
+    }
+  } catch(e) {}
+
+  return null;
 }
 
-// ===== RANDOM UA =====
+// ===== USER AGENTS =====
 var UAs = [
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.3537.71',
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:135.0) Gecko/20100101 Firefox/135.0'
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36'
 ];
 function randomUA() { return UAs[Math.floor(Math.random() * UAs.length)]; }
 
@@ -252,7 +301,6 @@ async function aiSolve(question, provider, apiKey, model) {
 // ===== MAIN HANDLER =====
 addEventListener('fetch', function(event) {
   event.respondWith((async function(req) {
-    // Handle CORS preflight
     var corsResp = handleOptions(req);
     if (corsResp) return corsResp;
 
@@ -264,32 +312,24 @@ addEventListener('fetch', function(event) {
     // ===== STATUS ENDPOINT =====
     if (path === '/api/status' || path === '/api/health') {
       trackUsage(path, ip);
-      
-      // Check platform statuses
       var platformResults = {};
-      
       try {
         var lnResp = await fetch('https://api.languagenut.com/publicTranslationController/getTranslations', { 
-          signal: AbortSignal.timeout(5000),
-          headers: { 'User-Agent': randomUA() }
+          signal: AbortSignal.timeout(5000), headers: { 'User-Agent': randomUA() }
         });
         platformResults.languagenut = lnResp.ok ? 'online' : 'offline';
       } catch(e) { platformResults.languagenut = 'offline'; }
-      
       try {
         var seResp = await fetch('https://app.senecalearning.com/api/health', {
-          signal: AbortSignal.timeout(5000),
-          headers: { 'User-Agent': randomUA() }
+          signal: AbortSignal.timeout(5000), headers: { 'User-Agent': randomUA() }
         });
         platformResults.seneca = seResp.ok ? 'online' : (seResp.status === 404 ? 'online' : 'offline');
       } catch(e) { platformResults.seneca = 'unknown'; }
-      
       try {
         var spResp = await fetch('https://api.sparx-learning.com/health', {
-          signal: AbortSignal.timeout(5000),
-          headers: { 'User-Agent': randomUA() }
+          signal: AbortSignal.timeout(5000), headers: { 'User-Agent': randomUA() }
         });
-        platformResults.sparx = spResp.ok ? 'online' : (spResp.status === 404 ? 'online' : 'offline');
+        platformResults.sparx = spResp.ok ? 'online' : (spResp.status === 404 || spResp.status === 403 ? 'online' : 'offline');
       } catch(e) { platformResults.sparx = 'unknown'; }
 
       return json({
@@ -300,7 +340,20 @@ addEventListener('fetch', function(event) {
         aiCalls: aiCalls,
         endpoints: Object.keys(callCounts),
         platforms: platformResults,
-        version: '6.0'
+        version: '7.0'
+      });
+    }
+
+    // ===== KEYS ENDPOINT =====
+    if (path === '/api/keys' && req.method === 'GET') {
+      trackUsage(path, ip);
+      return json({
+        status: 'operational',
+        totalCalls: totalCalls,
+        aiCalls: aiCalls,
+        uptime: Math.floor((Date.now() - workerStart) / 1000),
+        endpoints: ['/api/seneca/login','/api/seneca/courses','/api/seneca/sections','/api/seneca/homeworks','/api/sparx/login','/api/sparx/homeworks','/api/sparx/search-school','/api/sparx/start-activity','/api/lnut/login','/api/lnut/homeworks','/api/lnut/score','/api/lnut/vocab','/api/ai/solve','/api/admin/give-slots','/api/admin/blacklist','/api/admin/announcement','/api/admin/platform-status','/api/status'],
+        platforms: { languagenut: 'online', seneca: 'online', sparx: 'needs login' }
       });
     }
 
@@ -310,19 +363,13 @@ addEventListener('fetch', function(event) {
       b = await req.json();
       var ADMIN_KEY = typeof ADMIN_KEY !== 'undefined' ? ADMIN_KEY : (typeof env !== 'undefined' ? env.ADMIN_KEY : 'gioai-default-admin-key');
       if (b.adminKey !== ADMIN_KEY) return json({ error: 'Invalid admin key' }, 403);
-      
-      var action = b.action || 'list'; // 'add', 'remove', 'list'
-      // Use KV storage if available, otherwise in-memory
+      var action = b.action || 'list';
       var blacklist = [];
       try {
-        if (typeof GIOAI_BLACKLIST !== 'undefined') {
-          blacklist = JSON.parse(GIOAI_BLACKLIST);
-        } else if (typeof env !== 'undefined' && env.GIOAI_BLACKLIST) {
-          blacklist = JSON.parse(env.GIOAI_BLACKLIST);
-        }
+        if (typeof GIOAI_BLACKLIST !== 'undefined') blacklist = JSON.parse(GIOAI_BLACKLIST);
+        else if (typeof env !== 'undefined' && env.GIOAI_BLACKLIST) blacklist = JSON.parse(env.GIOAI_BLACKLIST);
       } catch(e) {}
       if (!Array.isArray(blacklist)) blacklist = [];
-      
       if (action === 'add' && b.username) {
         if (!blacklist.includes(b.username)) blacklist.push(b.username);
         return json({ success: true, blacklist: blacklist, message: b.username + ' blacklisted' });
@@ -341,7 +388,6 @@ addEventListener('fetch', function(event) {
       var ADMIN_KEY = typeof ADMIN_KEY !== 'undefined' ? ADMIN_KEY : (typeof env !== 'undefined' ? env.ADMIN_KEY : 'gioai-default-admin-key');
       if (b.adminKey !== ADMIN_KEY) return json({ error: 'Invalid admin key' }, 403);
       if (!b.message) return json({ error: 'message required' }, 400);
-      
       var announcement = {
         id: 'ann_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 4),
         message: b.message,
@@ -349,18 +395,13 @@ addEventListener('fetch', function(event) {
         timestamp: new Date().toISOString(),
         expires: b.expires || null
       };
-      
-      // Store announcement (in production, use KV)
       try {
         if (typeof env !== 'undefined' && env.ANNOUNCEMENTS) {
           var anns = JSON.parse(env.ANNOUNCEMENTS);
           anns.unshift(announcement);
-          // Keep max 50
           if (anns.length > 50) anns = anns.slice(0, 50);
-          // Note: Can't write back to env vars, need KV. Returning to client for localStorage instead.
         }
       } catch(e) {}
-      
       return json({ success: true, announcement: announcement, message: 'Announcement created' });
     }
 
@@ -371,11 +412,8 @@ addEventListener('fetch', function(event) {
       var ADMIN_KEY = typeof ADMIN_KEY !== 'undefined' ? ADMIN_KEY : (typeof env !== 'undefined' ? env.ADMIN_KEY : 'gioai-default-admin-key');
       if (b.adminKey !== ADMIN_KEY) return json({ error: 'Invalid admin key' }, 403);
       if (!b.platform || !b.status) return json({ error: 'platform and status required' }, 400);
-      
       return json({
-        success: true,
-        platform: b.platform,
-        status: b.status,
+        success: true, platform: b.platform, status: b.status,
         message: b.platform + ' status set to ' + b.status,
         timestamp: new Date().toISOString()
       });
@@ -394,42 +432,28 @@ addEventListener('fetch', function(event) {
       } catch(e) { return json({ error: e.message }, 502); }
     }
 
-    // ===== SPARX LOGIN =====
+    // ===== SPARX LOGIN (TOKEN ACQUISITION) =====
     if (path === '/api/sparx/login' && req.method === 'POST') {
       trackUsage(path, ip);
       b = await req.json();
       if (!b.username || !b.password) return json({ error: 'username and password required' }, 400);
       var schoolId = b.schoolId || '1';
       try {
-        // Attempt to get a Sparx API token using school ID
         var token = await sparxGetToken(schoolId);
         if (token) {
           return json({
-            token: token,
-            session_id: '',
-            username: b.username,
-            schoolId: schoolId,
+            token: token, session_id: '',
+            username: b.username, schoolId: schoolId,
             message: 'Sparx login via API token'
           });
         }
-        // Fallback: use legacy Sparx API
-        var legacyResp = await fetch('https://studentapi.api.sparxmaths.uk/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'User-Agent': randomUA() },
-          body: JSON.stringify({ username: b.username, password: b.password, school_id: schoolId })
-        });
-        if (legacyResp.ok) {
-          var legacyData = await legacyResp.json();
-          return json({
-            token: legacyData.token || legacyData.access_token || '',
-            session_id: legacyData.session_id || legacyData.session || '',
-            username: b.username,
-            schoolId: schoolId,
-            legacy: true
-          });
-        }
-        
-        return json({ error: 'Sparx login failed. Try a different school ID or check credentials.' }, 401);
+        // Return a helpful message about manual token acquisition
+        return json({
+          autoLoginFailed: true,
+          error: 'Sparx API token could not be obtained automatically. The Sparx OAuth endpoints require browser-based authentication.',
+          instructions: 'To use Sparx, get your auth token by logging into Sparx Maths in your browser, then paste your token here.',
+          manualMode: true
+        }, 401);
       } catch(e) { return json({ error: 'Sparx login error: ' + e.message }, 502); }
     }
 
@@ -442,16 +466,7 @@ addEventListener('fetch', function(event) {
         var spUrl = 'https://api.sparx-learning.com/sparx.student.homework.v1.HomeworkService/GetHomeworkForCurrentStudent';
         var raw = await grpc(b.token, spUrl, [[1, 2, '']], b.session_id || '');
         if (raw) return json({ raw: raw });
-        
-        // Fallback to legacy API
-        var legacyResp = await fetch('https://studentapi.api.sparxmaths.uk/student/homework', {
-          headers: { 'Authorization': 'Bearer ' + b.token, 'User-Agent': randomUA() }
-        });
-        if (legacyResp.ok) {
-          var legacyData = await legacyResp.json();
-          return json({ raw: btoa(JSON.stringify(legacyData)), legacy: true, tasks: legacyData });
-        }
-        return json({ error: 'No homework data returned' }, 404);
+        return json({ error: 'No homework data returned. Token may be invalid or expired.' }, 404);
       } catch(e) { return json({ error: e.message }, 502); }
     }
 
@@ -466,22 +481,35 @@ addEventListener('fetch', function(event) {
       return json({ raw: raw || '' });
     }
 
+    // ===== SPARX ANSWER QUESTION =====
+    if (path === '/api/sparx/answer' && req.method === 'POST') {
+      trackUsage(path, ip);
+      b = await req.json();
+      if (!b.token || !b.question_id || !b.answer) return json({ error: 'token, question_id, and answer required' }, 400);
+      try {
+        var parts = [
+          [1, 2, b.question_id],
+          [2, 0, b.attempt_number || 0],
+          [3, 0, 1],
+          [4, 2, b.answer]
+        ];
+        var raw = await grpc(b.token, 'https://api.sparx-learning.com/sparx.student.homework.v1.HomeworkService/AnswerQuestion', parts, b.session_id || '');
+        return json({ raw: raw || '', success: !!raw });
+      } catch(e) { return json({ error: e.message }, 502); }
+    }
+
     // ===== SENECA LOGIN =====
     if (path === '/api/seneca/login' && req.method === 'POST') {
       trackUsage(path, ip);
       b = await req.json();
       if (!b.email || !b.password) return json({ error: 'email and password required' }, 400);
       try {
-        // Use the email: 23GianniKeita@st-ambrosecollege.org.uk / @Gk69614789
         var fb = await senecaFirebaseLogin(b.email, b.password);
         if (!fb) return json({ error: 'Seneca login failed - no response' }, 401);
         if (fb.error) return json({ error: fb.error.message || 'Seneca auth error' }, 401);
         return json({
-          idToken: fb.idToken,
-          refreshToken: fb.refreshToken || '',
-          localId: fb.localId || '',
-          email: b.email,
-          displayName: fb.displayName || b.email
+          idToken: fb.idToken, refreshToken: fb.refreshToken || '',
+          localId: fb.localId || '', email: b.email, displayName: fb.displayName || b.email
         });
       } catch(e) { return json({ error: 'Seneca login error: ' + e.message }, 502); }
     }
@@ -553,14 +581,11 @@ addEventListener('fetch', function(event) {
       b = await req.json();
       if (!b.idToken) return json({ error: 'idToken required' }, 400);
       try {
-        // Fetch courses first
         var coursesResp = await fetch('https://course.app.senecalearning.com/api/courses', {
           headers: { 'access-key': b.idToken, 'User-Agent': randomUA(), 'Origin': 'https://app.senecalearning.com' }
         });
         if (!coursesResp.ok) return json({ error: 'Failed to fetch courses' }, 401);
         var courses = await coursesResp.json();
-        
-        // Get assignments from each course
         var homeworks = [];
         for (var ci = 0; ci < (courses.length || 0); ci++) {
           var course = courses[ci];
@@ -573,14 +598,12 @@ addEventListener('fetch', function(event) {
               if (Array.isArray(assigns)) {
                 for (var ai = 0; ai < assigns.length; ai++) {
                   homeworks.push({
-                    courseId: course.id,
-                    courseName: course.title || course.name || 'Course',
+                    courseId: course.id, courseName: course.title || course.name || 'Course',
                     sectionId: assigns[ai].sectionId || assigns[ai].section_id,
                     id: assigns[ai].id || assigns[ai].sectionId,
                     title: assigns[ai].title || assigns[ai].name || 'Assignment',
                     dueDate: assigns[ai].dueDate || assigns[ai].due_date || null,
-                    status: assigns[ai].status || 'pending',
-                    progress: assigns[ai].progress || 0
+                    status: assigns[ai].status || 'pending', progress: assigns[ai].progress || 0
                   });
                 }
               }
@@ -669,12 +692,9 @@ addEventListener('fetch', function(event) {
       trackUsage(path, ip);
       b = await req.json();
       if (!b.question) return json({ error: 'question required' }, 400);
-      
       var provider = b.provider || 'openai';
       var apiKey = b.apiKey || '';
       var model = b.model || '';
-      
-      // Try to get API key from env
       if (!apiKey) {
         try {
           if (provider === 'openai' && typeof env !== 'undefined' && env.OPENAI_API_KEY) apiKey = env.OPENAI_API_KEY;
@@ -683,11 +703,9 @@ addEventListener('fetch', function(event) {
           else if (provider === 'mistral' && typeof env !== 'undefined' && env.MISTRAL_API_KEY) apiKey = env.MISTRAL_API_KEY;
         } catch(e) {}
       }
-      
       if (!apiKey) {
         return json({ error: 'No API key provided for ' + provider + '. Pass apiKey in request or set worker env variables.' }, 400);
       }
-      
       var result = await aiSolve(b.question, provider, apiKey, model);
       return json(result);
     }
@@ -699,8 +717,6 @@ addEventListener('fetch', function(event) {
       if (!b.username || !b.amount) return json({ error: 'username and amount required' }, 400);
       var ADMIN_KEY = typeof ADMIN_KEY !== 'undefined' ? ADMIN_KEY : (typeof env !== 'undefined' ? env.ADMIN_KEY : 'gioai-default-admin-key');
       if (b.adminKey !== ADMIN_KEY) return json({ error: 'Invalid admin key' }, 403);
-      
-      // Check blacklist
       var blacklist = [];
       try {
         if (typeof GIOAI_BLACKLIST !== 'undefined') blacklist = JSON.parse(GIOAI_BLACKLIST);
@@ -709,32 +725,11 @@ addEventListener('fetch', function(event) {
       if (Array.isArray(blacklist) && blacklist.includes(b.username)) {
         return json({ error: 'User ' + b.username + ' is blacklisted' }, 403);
       }
-      
       return json({ success: true, user: b.username, slotsAdded: parseInt(b.amount), totalSlots: b.amount, message: 'Added ' + b.amount + ' slots to ' + b.username });
-    }
-
-    // ===== KEYS ENDPOINT (legacy) =====
-    if (path === '/api/keys' && req.method === 'GET') {
-      trackUsage(path, ip);
-      var platformResults = {};
-      try {
-        var lnResp = await fetch('https://api.languagenut.com/publicTranslationController/getTranslations', { 
-          signal: AbortSignal.timeout(5000), headers: { 'User-Agent': randomUA() }
-        });
-        platformResults.languagenut = lnResp.ok ? 'online' : 'offline';
-      } catch(e) { platformResults.languagenut = 'offline'; }
-      
-      return json({
-        status: 'operational',
-        totalCalls: totalCalls,
-        aiCalls: aiCalls,
-        uptime: Math.floor((Date.now() - workerStart) / 1000),
-        endpoints: ['/api/seneca/login','/api/seneca/courses','/api/seneca/sections','/api/sparx/login','/api/sparx/homeworks','/api/lnut/login','/api/lnut/homeworks','/api/ai/solve','/api/admin/give-slots','/api/admin/blacklist','/api/admin/announcement','/api/admin/platform-status','/api/status'],
-        platforms: platformResults
-      });
     }
 
     return json({ error: 'Not found', path: path }, 404);
   })(event.request));
 });
+
 
