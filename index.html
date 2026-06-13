@@ -11,158 +11,157 @@
 <!-- ===== TOAST CONTAINER ===== -->
 <div id="toastContainer"></div>
 
-<!-- ===== LOADING SCREEN ===== -->
-<div id="appLoading" class="screen active">
+<!-- ===== BOOT SCREEN ===== -->
+<div id="appLoading">
   <div class="boot-container">
-    <div class="boot-logo">
-      <pre class="boot-ascii">
-  ____ ___   ___  _ 
- / ___/ _ \ / _ \/_|
-| |  | | | | | | | |
-| |__| |_| | |_| | |
- \____\___/ \___/ |_|</pre>
-    </div>
+    <div class="boot-logo">GIOAI</div>
+    <div class="boot-sub">Loading...</div>
     <div class="boot-progress-wrap">
       <div class="boot-progress-bar" id="bootProgress"></div>
     </div>
     <div class="boot-lines" id="bootLines"></div>
-    <div class="boot-status" id="bootStatus">Starting services...</div>
   </div>
 </div>
 
-<!-- ===== PLATFORM LOADING OVERLAY ===== -->
-<div id="platformLoading" class="overlay" style="display:none">
-  <div class="platform-loading-box">
-    <div class="pl-logo" id="plLogo">
-      <svg class="pl-svg" viewBox="0 0 100 100" id="plSvgLn" style="display:none">
-        <circle cx="50" cy="50" r="40" fill="none" stroke="#00d4ff" stroke-width="4"/>
-        <text x="50" y="58" text-anchor="middle" fill="#00d4ff" font-size="28" font-weight="bold">LN</text>
-        <circle cx="50" cy="50" r="40" fill="none" stroke="#00d4ff" stroke-width="4" stroke-dasharray="251" stroke-dashoffset="251" class="pl-spin-ring"/>
-      </svg>
-      <svg class="pl-svg" viewBox="0 0 100 100" id="plSvgSe" style="display:none">
-        <rect x="10" y="20" width="80" height="60" rx="8" fill="none" stroke="#ff6e40" stroke-width="4"/>
-        <text x="50" y="58" text-anchor="middle" fill="#ff6e40" font-size="22" font-weight="bold">SE</text>
-        <rect x="10" y="20" width="80" height="60" rx="8" fill="none" stroke="#ff6e40" stroke-width="4" stroke-dasharray="260" stroke-dashoffset="260" class="pl-spin-ring"/>
-      </svg>
-      <svg class="pl-svg" viewBox="0 0 100 100" id="plSvgSp" style="display:none">
-        <polygon points="50,10 90,30 90,70 50,90 10,70 10,30" fill="none" stroke="#00ff41" stroke-width="4"/>
-        <text x="50" y="58" text-anchor="middle" fill="#00ff41" font-size="20" font-weight="bold">SX</text>
-        <polygon points="50,10 90,30 90,70 50,90 10,70 10,30" fill="none" stroke="#00ff41" stroke-width="4" stroke-dasharray="240" stroke-dashoffset="240" class="pl-spin-ring"/>
-      </svg>
-    </div>
-    <div class="pl-text" id="plText">Logging in...</div>
-    <div class="pl-sub" id="plSub">Please wait</div>
-  </div>
-</div>
-
-<!-- ===== SIDEBAR ===== -->
-<div id="sidebarOverlay" class="sidebar-overlay"></div>
-<nav id="sidebar" class="sidebar">
-  <div class="sidebar-header">
-    <div class="sidebar-logo">GIOAI</div>
-    <div class="sidebar-version" id="sidebarVersion">v0</div>
-    <button id="sidebarClose" class="sidebar-close">&times;</button>
-  </div>
-  <div class="sidebar-user">
-    <div class="sidebar-user-name" id="sidebarUserName">Guest</div>
-    <div class="sidebar-user-platform" id="sidebarUserPlatform"></div>
-  </div>
-  <div class="sidebar-links">
-    <button class="sidebar-link" data-screen="hub"><span class="sl-icon">&#9776;</span> Hub</button>
-    <button class="sidebar-link" data-screen="status"><span class="sl-icon">&#9881;</span> Status</button>
-    <button class="sidebar-link" data-screen="admin"><span class="sl-icon">&#128274;</span> Admin</button>
-    <button class="sidebar-link" data-screen="donate"><span class="sl-icon">&#9829;</span> Support</button>
-  </div>
-  <div class="sidebar-footer">
-    <span id="workerStatusBadge" class="status-badge">Checking...</span>
-  </div>
-</nav>
-
-<!-- ===== HAMBURGER ===== -->
-<button id="hamburgerBtn" class="hamburger">&#9776;</button>
-
-<!-- ===== DISCLAIMER ===== -->
-<div id="disclaimer" class="disclaimer-overlay">
-  <div class="disclaimer-box">
-    <h2>Disclaimer</h2>
-    <p>This tool is for educational purposes only. Use at your own risk.</p>
-    <p>By using this tool, you agree that you are responsible for your own actions.</p>
-    <div class="disclaimer-btns">
-      <button id="disclaimerAgree" class="btn btn-primary">I Understand</button>
-      <button id="disclaimerContinue" class="btn btn-success">Continue</button>
+<!-- ===== TOP BAR ===== -->
+<header class="topbar">
+  <div class="topbar-logo">GIOAI</div>
+  <nav class="topbar-nav" id="topbarNav">
+    <button class="active" data-screen="hub">Hub</button>
+    <button data-screen="status">Status</button>
+    <button data-screen="settings">Settings</button>
+    <button data-screen="admin">Admin</button>
+    <button data-screen="donate">Donate</button>
+  </nav>
+  <div class="topbar-right">
+    <div class="server-indicator" id="serverIndicator" title="Local Playwright Server">
+      <span class="server-dot offline" id="serverDot"></span>
+      <span id="serverLabel">Server</span>
     </div>
   </div>
-</div>
+</header>
 
 <!-- ===== HUB SCREEN ===== -->
 <div id="hubScreen" class="screen active">
   <div class="hub-container">
     <div class="hub-header">
       <h1>GIOAI</h1>
-      <p class="hub-subtitle">Homework Autocomplete Platform</p>
-      <div class="hub-stats">
-        <div class="hub-stat"><span class="hub-stat-val" id="queueTotal">0</span><span class="hub-stat-lbl">Queue</span></div>
-        <div class="hub-stat"><span class="hub-stat-val" id="queueStatus">Idle</span><span class="hub-stat-lbl">Status</span></div>
-      </div>
+      <p>Homework Autocomplete Platform</p>
     </div>
+
+    <div class="hub-queue-info">
+      <div class="qi-item"><span class="qi-val" id="queueTotal">0</span><span class="qi-lbl">Queue</span></div>
+      <div class="qi-item"><span class="qi-val" id="queueStatus">Idle</span><span class="qi-lbl">Status</span></div>
+      <div class="qi-item"><span class="qi-val" id="usesLeft">2</span><span class="qi-lbl">Uses Left</span></div>
+    </div>
+
     <div class="hub-cards">
+      <!-- LanguageNut -->
       <div class="hub-card" data-platform="languagenut">
-        <div class="hc-icon" style="color:#00d4ff">LN</div>
-        <div class="hc-title">LanguageNut</div>
-        <div class="hc-desc">Complete language assignments</div>
-        <div class="hc-status online">Online</div>
+        <div class="hub-card-icon" style="color:#00d4ff;border-color:rgba(0,212,255,0.2)">LN</div>
+        <div class="hub-card-info">
+          <div class="hub-card-title">LanguageNut</div>
+          <div class="hub-card-desc">Complete language assignments</div>
+        </div>
+        <span class="hub-card-status online">Online</span>
+        <span class="hub-card-arrow">→</span>
       </div>
+
+      <!-- Seneca -->
       <div class="hub-card" data-platform="seneca">
-        <div class="hc-icon" style="color:#ff6e40">SE</div>
-        <div class="hc-title">Seneca</div>
-        <div class="hc-desc">Complete Seneca Learning tasks</div>
-        <div class="hc-status online">Online</div>
+        <div class="hub-card-icon" style="color:#ff6e40;border-color:rgba(255,110,64,0.2)">SE</div>
+        <div class="hub-card-info">
+          <div class="hub-card-title">Seneca</div>
+          <div class="hub-card-desc">Complete Seneca Learning tasks</div>
+        </div>
+        <span class="hub-card-status online">Online</span>
+        <span class="hub-card-arrow">→</span>
       </div>
+
+      <!-- Sparx -->
       <div class="hub-card" data-platform="sparx">
-        <div class="hc-icon" style="color:#00ff41">SX</div>
-        <div class="hc-title">Sparx</div>
-        <div class="hc-desc">Complete Sparx Maths homework</div>
-        <div class="hc-status online">Online</div>
+        <div class="hub-card-icon" style="color:#00ff41;border-color:rgba(0,255,65,0.2)">SX</div>
+        <div class="hub-card-info">
+          <div class="hub-card-title">Sparx</div>
+          <div class="hub-card-desc">Complete Sparx Maths homework via Playwright</div>
+        </div>
+        <span class="hub-card-status online">Online</span>
+        <span class="hub-card-arrow">→</span>
       </div>
     </div>
+
     <div class="hub-announcements">
       <div class="hub-announcements-header">
         <h3>Announcements</h3>
-        <button id="notifBell" class="btn-icon">&#128276;</button>
-        <span id="notifBadge" class="notif-badge" style="display:none">0</span>
       </div>
-      <div id="announcementList" class="announcement-list"><div class="empty-state">No announcements</div></div>
+      <div id="announcementList"><div class="empty-state">No announcements</div></div>
     </div>
   </div>
 </div>
 
 <!-- ===== PLATFORM LOGIN SCREEN ===== -->
 <div id="platformLoginScreen" class="screen">
-  <div class="login-container">
-    <div class="login-header">
-      <button id="backToHub" class="btn-icon">&larr;</button>
-      <div id="platformLoginTitle" class="login-title">Login</div>
-      <div id="loginPlatformBadge" class="login-platform-badge">?</div>
-    </div>
-    <div class="login-body">
-      <div class="form-group">
-        <label id="loginUsernameLabel">Username</label>
-        <input type="text" id="platformUsername" placeholder="Username" autocomplete="off">
+  <div class="platform-login">
+    <button id="backToHub" class="platform-login-back">← Back to Hub</button>
+
+    <div class="platform-login-card">
+      <div class="platform-login-header">
+        <div class="plf-icon" id="plfIcon">LN</div>
+        <h2 id="plfTitle">Login</h2>
+        <p id="plfDesc" style="display:none"></p>
       </div>
-      <div class="form-group">
-        <label>Password</label>
-        <input type="password" id="platformPassword" placeholder="&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;" autocomplete="off">
+
+      <!-- ===== COMMON LOGIN FIELDS ===== -->
+      <div id="loginCommonFields">
+        <div class="form-group">
+          <label id="loginUserLabel">Username</label>
+          <input type="text" id="platformUsername" placeholder="" autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="platformPassword" placeholder="&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;" autocomplete="off">
+        </div>
       </div>
-      <div id="senecaLoginExtra" class="login-extra" style="display:none">
-        <div class="tip">Use your Seneca email & password to login via Firebase</div>
+
+      <!-- ===== SPARX-SPECIFIC FIELDS ===== -->
+      <div id="sparxFields" style="display:none">
+        <div class="form-group school-search-wrap">
+          <label>School</label>
+          <input type="text" id="sparxSchoolSearch" placeholder="Search for your school..." autocomplete="off">
+          <div class="school-search-results" id="sparxSchoolResults"></div>
+        </div>
+        <div class="form-group">
+          <label>School ID</label>
+          <input type="text" id="sparxSchoolId" placeholder="Auto-filled from school search" readonly>
+        </div>
       </div>
-      <div id="sparxLoginExtra" class="login-extra" style="display:none">
-        <div class="tip">Sparx uses school-based login. Use the Sparx Maths tab in sparx-auto.html</div>
+
+      <!-- ===== SENECA-SPECIFIC ===== -->
+      <div id="senecaTip" style="display:none">
+        <div class="tip">Use your Seneca Learning email & password</div>
       </div>
-      <button id="platformLoginBtn" class="btn btn-primary btn-block">Login</button>
-      <div id="loginStatus" class="login-status" style="display:none">
-        <span id="loginStatusText"></span>
+
+      <!-- ===== SPARX ALTERNATE (COOKIE) ===== -->
+      <div id="sparxCookieSection" style="display:none">
+        <div style="text-align:center;margin:12px 0;font-size:12px;color:var(--text3)">— or —</div>
+        <div class="form-group">
+          <label>Sparx Cookies (Alternative)</label>
+          <textarea id="sparxCookies" rows="3" placeholder="Paste cookies from browser (F12 > Application > Cookies)" style="width:100%;padding:10px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:12px;outline:none;resize:none"></textarea>
+        </div>
+        <button id="sparxExchangeBtn" class="btn btn-ghost btn-block" disabled>Exchange Cookies</button>
       </div>
+
+      <div id="sparxTokenSection" style="display:none">
+        <div style="text-align:center;margin:12px 0;font-size:12px;color:var(--text3)">— or —</div>
+        <div class="form-group">
+          <label>Existing Token</label>
+          <input type="text" id="sparxTokenInput" placeholder="Paste your Sparx API token">
+        </div>
+        <button id="sparxTokenBtn" class="btn btn-ghost btn-block">Use Token</button>
+      </div>
+
+      <button id="platformLoginBtn" class="btn btn-primary btn-block" style="margin-top:8px">Login</button>
+      <div id="loginStatus" class="login-status"><span id="loginStatusText"></span></div>
     </div>
   </div>
 </div>
@@ -171,34 +170,41 @@
 <div id="dashboardScreen" class="screen">
   <div class="dash-container">
     <div class="dash-header">
-      <div class="dash-user">
-        <span id="dashStatusDot" class="status-dot"></span>
-        <span id="dashUserDisplay">User</span>
-        <span id="dashPlatformBadge" class="dash-platform-badge">?</span>
+      <div class="dash-user-info">
+        <div class="dash-avatar" id="dashAvatar">U</div>
+        <div>
+          <div class="dash-user-name" id="dashUserDisplay">User</div>
+          <div class="dash-user-platform" id="dashPlatformBadge">Platform</div>
+        </div>
       </div>
-      <div class="dash-actions">
-        <button id="dashSettingsBtn" class="btn-icon">&#9881;</button>
+      <div style="display:flex;gap:6px">
+        <button id="dashSettingsBtn" class="btn-icon" title="Settings">&#9881;</button>
       </div>
     </div>
+
     <div class="dash-stats">
       <div class="dash-stat"><span class="dash-stat-val" id="dashStatCompleted">0</span><span class="dash-stat-lbl">Done</span></div>
       <div class="dash-stat"><span class="dash-stat-val" id="dashStatXp">0</span><span class="dash-stat-lbl">XP</span></div>
       <div class="dash-stat"><span class="dash-stat-val" id="dashStatErrors">0</span><span class="dash-stat-lbl">Errors</span></div>
     </div>
+
     <div class="dash-controls">
       <button id="dashFetchBtn" class="btn btn-success">Fetch Tasks</button>
       <button id="dashStartBtn" class="btn btn-primary" disabled>Start</button>
       <button id="dashStopBtn" class="btn btn-danger" disabled>Stop</button>
-      <button id="dashLogoutBtn" class="btn btn-sm" style="background:var(--bg3);color:var(--text2);border:1px solid var(--border)">Logout</button>
+      <button id="dashLogoutBtn" class="btn btn-ghost">Logout</button>
     </div>
+
     <div class="dash-progress">
       <div class="progress-bar"><div class="progress-fill" id="dashProgressFill"></div></div>
       <div class="progress-text" id="dashProgressText"></div>
     </div>
+
     <div class="dash-tasks" id="dashTasks">
       <div class="empty-state">Login and click Fetch Tasks</div>
     </div>
-    <div class="dash-log" id="dashLog">
+
+    <div class="dash-log">
       <div class="log-header">Activity Log</div>
       <div class="log-entries" id="dashLogEntries">
         <div class="log-entry log-info">→ System ready</div>
@@ -209,43 +215,64 @@
 
 <!-- ===== STATUS SCREEN ===== -->
 <div id="statusScreen" class="screen">
-  <div class="status-container">
-    <div class="status-header">
-      <h2>System Status</h2>
-      <div>
-        <button id="statusRefreshBtn" class="btn-icon" onclick="loadStatusPage()">&#8635;</button>
-        <button class="btn-icon" onclick="showScreen('hubScreen')">&times;</button>
+  <div class="screen-container">
+    <div class="screen-card">
+      <div class="screen-card-header">
+        <h2>System Status</h2>
+        <button id="statusRefreshBtn" class="btn-icon">&#8635;</button>
       </div>
-    </div>
-    <div class="status-body" id="statusContent">
-      <div class="empty-state">Loading status...</div>
+      <div class="screen-card-body" id="statusContent">
+        <div class="empty-state">Loading...</div>
+      </div>
     </div>
   </div>
 </div>
 
 <!-- ===== SETTINGS SCREEN ===== -->
 <div id="settingsScreen" class="screen">
-  <div class="settings-container">
-    <div class="settings-header">
-      <h2>Settings</h2>
-      <button id="settingsBackBtn" class="btn-icon">&times;</button>
-    </div>
-    <div class="settings-body">
-      <div class="settings-section">
-        <h3>Theme</h3>
-        <div class="theme-selector-lg">
-          <button class="theme-btn-lg active" data-theme="dark">Dark</button>
-          <button class="theme-btn-lg" data-theme="hacker">Hacker</button>
-          <button class="theme-btn-lg" data-theme="light">Light</button>
-          <button class="theme-btn-lg" data-theme="neon">Neon</button>
-          <button class="theme-btn-lg" data-theme="ocean">Ocean</button>
-          <button class="theme-btn-lg" data-theme="sunset">Sunset</button>
-        </div>
+  <div class="screen-container">
+    <div class="screen-card">
+      <div class="screen-card-header">
+        <h2>Settings</h2>
       </div>
-      <div class="settings-section">
-        <h3>Usage</h3>
-        <div class="setting-row"><label>Remaining uses today:</label><span id="settingsRemainingUses">2</span></div>
-        <div class="setting-row"><label>Bonus uses:</label><span id="settingsBonusUses">0</span></div>
+      <div class="screen-card-body">
+        <div class="admin-section">
+          <h3>Theme</h3>
+          <div class="theme-grid" id="themeGrid">
+            <button class="theme-btn active" data-theme="dark">Dark</button>
+            <button class="theme-btn" data-theme="hacker">Hacker</button>
+            <button class="theme-btn" data-theme="light">Light</button>
+            <button class="theme-btn" data-theme="neon">Neon</button>
+            <button class="theme-btn" data-theme="ocean">Ocean</button>
+            <button class="theme-btn" data-theme="sunset">Sunset</button>
+          </div>
+        </div>
+        <div class="admin-section">
+          <h3>Server</h3>
+          <div style="font-size:13px;color:var(--text2)">
+            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
+              <span>Local Playwright Server</span>
+              <span id="settingsServerStatus" class="ps-indicator offline">Offline</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:8px 0">
+              <span>Backend Address</span>
+              <span style="font-family:var(--mono);font-size:12px" id="settingsServerAddr">http://localhost:3456</span>
+            </div>
+          </div>
+        </div>
+        <div class="admin-section">
+          <h3>Usage</h3>
+          <div style="font-size:13px;color:var(--text2)">
+            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
+              <span>Remaining uses today</span>
+              <span id="settingsRemainingUses">2</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:8px 0">
+              <span>Bonus uses</span>
+              <span id="settingsBonusUses">0</span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -253,96 +280,98 @@
 
 <!-- ===== ADMIN SCREEN ===== -->
 <div id="adminScreen" class="screen">
-  <div class="admin-container">
-    <div class="admin-header">
-      <h2>Admin Panel</h2>
-      <button id="adminBackBtn" class="btn-icon" onclick="UI.showScreen('hubScreen')">&times;</button>
-    </div>
-    <div class="admin-body">
-      <div id="adminAuthSection" class="admin-section" style="text-align:center">
-        <h3>Authenticate</h3>
-        <input type="password" id="adminPassword" placeholder="Enter admin password" style="margin-bottom:.6rem;width:100%;max-width:300px">
-        <button id="adminLoginBtn" class="btn btn-primary" style="width:100%;max-width:300px">Login</button>
-        <div id="adminAuthError" class="admin-result" style="color:var(--danger);margin-top:.4rem;display:none"></div>
+  <div class="screen-container">
+    <div class="screen-card">
+      <div class="screen-card-header">
+        <h2>Admin Panel</h2>
       </div>
-      <div id="adminContent" style="display:none">
-        <div class="admin-section">
-          <h3>Give Slots</h3>
-          <div class="form-group"><label>Username</label><input type="text" id="adminUsername" placeholder="Target username"></div>
-          <div class="form-group"><label>Amount</label><input type="number" id="adminAmount" placeholder="Slots to add" min="1" value="1"></div>
-          <div class="form-group"><label>Admin Key</label><input type="password" id="adminKey" placeholder="Admin secret key"></div>
-          <button id="adminGiveSlotsBtn" class="btn btn-primary">Give Slots</button>
-          <div id="adminResult" class="admin-result"></div>
-        </div>
-        <div class="admin-section">
-          <h3>Platform Status
-            <button id="adminCheckPlatformsBtn" class="btn btn-small" style="float:right">Check Now</button>
-          </h3>
-          <div id="adminPlatformStatus">
-            <div class="platform-status-item">
-              <span class="ps-name">LanguageNut</span>
-              <span class="ps-indicator checking">Checking...</span>
-            </div>
-            <div class="platform-status-item">
-              <span class="ps-name">Seneca</span>
-              <span class="ps-indicator checking">Checking...</span>
-            </div>
-            <div class="platform-status-item">
-              <span class="ps-name">Sparx</span>
-              <span class="ps-indicator checking">Checking...</span>
-            </div>
-            <div class="platform-status-item">
-              <span class="ps-name">Worker</span>
-              <span class="ps-indicator checking">Checking...</span>
-            </div>
+      <div class="screen-card-body">
+        <div id="adminAuthSection" style="text-align:center;padding:20px 0">
+          <h3 style="margin-bottom:12px">Authenticate</h3>
+          <div class="form-group">
+            <input type="password" id="adminPassword" placeholder="Enter admin password" style="width:100%;max-width:300px;margin:0 auto">
           </div>
+          <button id="adminLoginBtn" class="btn btn-primary" style="width:100%;max-width:300px">Login</button>
+          <div id="adminAuthError" style="color:var(--error);margin-top:8px;display:none"></div>
         </div>
-        <div class="admin-section">
-          <h3>Send Announcement</h3>
-          <textarea id="adminAnnouncementMsg" rows="3" placeholder="Write announcement..." style="width:100%"></textarea>
-          <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
-            <label>Type:</label>
-            <select id="adminAnnouncementType">
-              <option value="info">Info</option>
-              <option value="warning">Warning</option>
-              <option value="error">Error</option>
-            </select>
-            <button id="adminAnnouncementBtn" class="btn btn-primary">Send</button>
+        <div id="adminContent" style="display:none">
+          <div class="admin-section">
+            <h3>Give Slots</h3>
+            <div class="form-group"><label>Username</label><input type="text" id="adminUsername" placeholder="Target username"></div>
+            <div class="form-group"><label>Amount</label><input type="number" id="adminAmount" min="1" value="1"></div>
+            <div class="form-group"><label>Admin Key</label><input type="password" id="adminKey" placeholder="Admin secret key"></div>
+            <button id="adminGiveSlotsBtn" class="btn btn-primary btn-block">Give Slots</button>
+            <div id="adminResult" class="admin-result"></div>
           </div>
-          <div id="adminAnnouncementResult" class="admin-result"></div>
-        </div>
-        <div class="admin-section">
-          <h3>Blacklist Management</h3>
-          <div style="display:flex;gap:8px;align-items:center">
-            <input type="text" id="adminBlacklistUser" placeholder="Username" style="flex:1">
-            <select id="adminBlacklistAction">
-              <option value="add">Add</option>
-              <option value="remove">Remove</option>
-              <option value="list">List</option>
-            </select>
-            <button id="adminBlacklistBtn" class="btn btn-primary btn-small">Go</button>
+          <div class="admin-section">
+            <h3>Platform Status</h3>
+            <div id="adminPlatformStatus">
+              <div class="platform-status-row">
+                <span class="ps-name">LanguageNut</span>
+                <span class="ps-indicator checking">Checking...</span>
+              </div>
+              <div class="platform-status-row">
+                <span class="ps-name">Seneca</span>
+                <span class="ps-indicator checking">Checking...</span>
+              </div>
+              <div class="platform-status-row">
+                <span class="ps-name">Sparx</span>
+                <span class="ps-indicator checking">Checking...</span>
+              </div>
+              <div class="platform-status-row">
+                <span class="ps-name">Local Server</span>
+                <span class="ps-indicator checking">Checking...</span>
+              </div>
+            </div>
+            <button id="adminCheckPlatformsBtn" class="btn btn-ghost btn-block" style="margin-top:8px">Refresh Status</button>
           </div>
-          <div id="adminBlacklistResult" class="admin-result"></div>
-        </div>
-        <div class="admin-section">
-          <h3>Set Platform Status</h3>
-          <div style="display:flex;gap:8px;align-items:center">
-            <select id="adminStatusPlatform">
-              <option value="languagenut">LanguageNut</option>
-              <option value="seneca">Seneca</option>
-              <option value="sparx">Sparx</option>
-            </select>
-            <select id="adminStatusValue">
-              <option value="online">Online</option>
-              <option value="maintenance">Maintenance</option>
-              <option value="offline">Offline</option>
-            </select>
-            <button id="adminPlatStatusBtn" class="btn btn-primary btn-small">Set</button>
+          <div class="admin-section">
+            <h3>Announcements</h3>
+            <textarea id="adminAnnouncementMsg" rows="3" placeholder="Write announcement..." style="width:100%;padding:10px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);outline:none;resize:none"></textarea>
+            <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
+              <label style="font-size:12px;color:var(--text2)">Type:</label>
+              <select id="adminAnnouncementType" style="padding:8px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);outline:none">
+                <option value="info">Info</option>
+                <option value="warning">Warning</option>
+                <option value="error">Error</option>
+              </select>
+              <button id="adminAnnouncementBtn" class="btn btn-primary btn-sm">Send</button>
+            </div>
+            <div id="adminAnnouncementResult" class="admin-result"></div>
           </div>
-          <div id="adminStatusResult" class="admin-result"></div>
-        </div>
-        <div class="admin-section" style="text-align:center">
-          <button id="adminLogoutBtn" class="btn btn-danger" style="width:100%">Logout</button>
+          <div class="admin-section">
+            <h3>Blacklist</h3>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input type="text" id="adminBlacklistUser" placeholder="Username" style="flex:1;padding:10px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);outline:none">
+              <select id="adminBlacklistAction" style="padding:10px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);outline:none">
+                <option value="add">Add</option>
+                <option value="remove">Remove</option>
+                <option value="list">List</option>
+              </select>
+              <button id="adminBlacklistBtn" class="btn btn-primary btn-sm">Go</button>
+            </div>
+            <div id="adminBlacklistResult" class="admin-result"></div>
+          </div>
+          <div class="admin-section">
+            <h3>Set Platform Status</h3>
+            <div style="display:flex;gap:8px;align-items:center">
+              <select id="adminStatusPlatform" style="padding:10px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);outline:none">
+                <option value="languagenut">LanguageNut</option>
+                <option value="seneca">Seneca</option>
+                <option value="sparx">Sparx</option>
+              </select>
+              <select id="adminStatusValue" style="padding:10px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);outline:none">
+                <option value="online">Online</option>
+                <option value="maintenance">Maintenance</option>
+                <option value="offline">Offline</option>
+              </select>
+              <button id="adminPlatStatusBtn" class="btn btn-primary btn-sm">Set</button>
+            </div>
+            <div id="adminStatusResult" class="admin-result"></div>
+          </div>
+          <div class="admin-section" style="text-align:center;border-bottom:none;padding-bottom:0">
+            <button id="adminLogoutBtn" class="btn btn-danger" style="width:100%">Logout</button>
+          </div>
         </div>
       </div>
     </div>
@@ -351,15 +380,16 @@
 
 <!-- ===== DONATE SCREEN ===== -->
 <div id="donateScreen" class="screen">
-  <div class="donate-container">
-    <div class="donate-header">
-      <h2>Support GIOAI</h2>
-      <button id="donateBackBtn" class="btn-icon" onclick="UI.showScreen('hubScreen')">&times;</button>
-    </div>
-    <div class="donate-body">
-      <p>GIOAI is free to use. If you find it useful, consider supporting development!</p>
-      <a href="https://www.paypal.me/giannikeita" target="_blank" class="btn btn-paypal">Donate with PayPal</a>
-      <button class="btn" disabled>Card (Coming Soon)</button>
+  <div class="screen-container">
+    <div class="screen-card">
+      <div class="screen-card-header">
+        <h2>Support GIOAI</h2>
+      </div>
+      <div class="screen-card-body donate-body">
+        <p>GIOAI is free to use. If you find it useful, consider supporting development!</p>
+        <a href="https://www.paypal.me/giannikeita" target="_blank" class="btn btn-paypal btn-block">Donate with PayPal</a>
+        <button class="btn btn-ghost btn-block" disabled>Card (Coming Soon)</button>
+      </div>
     </div>
   </div>
 </div>
@@ -392,11 +422,21 @@
       <button class="notif-tab" data-pane="changelog">Updates</button>
     </div>
     <div class="notif-pane active" id="pane-announcements">
-      <div id="announcementList" class="announcement-list"><div class="empty-state">No announcements</div></div>
+      <div id="announcementListOverlay" class="announcement-list"><div class="empty-state">No announcements</div></div>
     </div>
     <div class="notif-pane" id="pane-changelog">
       <div id="changelogList" class="changelog-list"><div class="empty-state">No updates</div></div>
     </div>
+  </div>
+</div>
+
+<!-- ===== PLATFORM LOADING OVERLAY ===== -->
+<div id="platformLoading" class="overlay" style="display:none">
+  <div style="text-align:center;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:40px;min-width:280px">
+    <div style="font-size:40px;font-weight:700;margin-bottom:8px" id="plfLoadingIcon">LN</div>
+    <div style="font-size:16px;font-weight:600;margin-bottom:4px;color:var(--text)" id="plfLoadingTitle">Logging in...</div>
+    <div style="font-size:13px;color:var(--text3);margin-bottom:20px" id="plfLoadingSub">Please wait</div>
+    <div class="progress-bar" style="max-width:200px;margin:0 auto"><div class="progress-fill" style="width:30%;animation:spin 2s linear infinite;background:linear-gradient(90deg,var(--primary),var(--accent))"></div></div>
   </div>
 </div>
 
