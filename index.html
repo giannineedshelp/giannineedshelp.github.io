@@ -41,6 +41,38 @@
   </div>
 </header>
 
+<!-- ===== NOTIFICATIONS OVERLAY ===== -->
+<div id="notifOverlay" class="overlay" style="display:none">
+  <div class="notif-modal">
+    <div class="notif-header">
+      <h2>Notifications & Help</h2>
+      <button id="notifClose" class="btn-icon">&times;</button>
+    </div>
+    <div class="notif-body">
+      <div class="notif-tabs">
+        <button class="notif-tab active" data-tab="tutorial">Tutorial</button>
+        <button class="notif-tab" data-tab="changelog">Changelog</button>
+        <button class="notif-tab" data-tab="announcements">Announcements</button>
+      </div>
+      <div class="notif-content">
+        <div class="notif-pane" id="announcementsPane"><div class="announcement-list" id="announcementList"><div class="empty-state">No announcements</div></div></div>
+        <div class="notif-pane active" id="tutorialPane">
+          <div class="tutorial-guide">
+            <h3>Quick Start Guide</h3>
+            <div class="tutorial-step"><span class="step-num">1</span><div><strong>Select Platform</strong> - Choose LN, Seneca, or Sparx from the hub</div></div>
+            <div class="tutorial-step"><span class="step-num">2</span><div><strong>Login</strong> - Enter your credentials. For Sparx, search your school first.</div></div>
+            <div class="tutorial-step"><span class="step-num">3</span><div><strong>Configure</strong> - Set fake timing, delays, and toggle past homework / working out</div></div>
+            <div class="tutorial-step"><span class="step-num">4</span><div><strong>Fetch & Complete</strong> - Load tasks, check what you want, click Start</div></div>
+          </div>
+        </div>
+        <div class="notif-pane" id="changelogPane">
+          <div class="changelog-list" id="changelogList"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ===== HUB SCREEN ===== -->
 <div id="hubScreen" class="screen active">
   <div class="hub-container">
@@ -99,6 +131,37 @@
   </div>
 </div>
 
+<!-- ===== SIDEBAR ===== -->
+<div id="sidebarOverlay" class="sidebar-overlay"></div>
+<nav id="sidebar" class="sidebar">
+  <div class="sidebar-header">
+    <span class="sidebar-logo">GIOAI</span>
+    <button id="sidebarClose" class="btn-icon">&times;</button>
+  </div>
+  <div class="sidebar-user">
+    <div class="sidebar-avatar" id="sidebarAvatar">G</div>
+    <div class="sidebar-user-info">
+      <div class="sidebar-user-name" id="sidebarUserName">Guest</div>
+      <div class="sidebar-user-platform" id="sidebarUserPlatform">Not logged in</div>
+    </div>
+  </div>
+  <div class="sidebar-links">
+    <a href="#" class="sidebar-link active" data-screen="hubScreen"><span class="sl-icon">&#9679;</span> Hub</a>
+    <a href="#" class="sidebar-link" data-screen="settingsScreen"><span class="sl-icon">&#9881;</span> Settings</a>
+    <a href="#" class="sidebar-link" data-screen="statusScreen"><span class="sl-icon">&#9888;</span> Status</a>
+    <a href="#" class="sidebar-link" data-screen="donateScreen"><span class="sl-icon">&#9829;</span> Donate</a>
+    <a href="#" class="sidebar-link" data-screen="adminScreen"><span class="sl-icon">&#9762;</span> Admin</a>
+  </div>
+  <div class="sidebar-footer">
+    <div class="sidebar-theme-selector">
+      <button class="theme-btn active" data-theme="dark" title="Dark">&#9789;</button>
+      <button class="theme-btn" data-theme="hacker" title="Hacker">&#9760;</button>
+      <button class="theme-btn" data-theme="light" title="Light">&#9788;</button>
+      <button class="theme-btn" data-theme="neon" title="Neon">&#9889;</button>
+    </div>
+    <div class="sidebar-ver">v<span id="sidebarVersion">2.5</span></div>
+  </div>
+</nav>
 <!-- ===== PLATFORM LOGIN SCREEN ===== -->
 <div id="platformLoginScreen" class="screen">
   <div class="platform-login">
@@ -378,17 +441,149 @@
   </div>
 </div>
 
+<!-- ===== STATUS SCREEN ===== -->
+<div id="statusScreen" class="screen">
+  <div class="status-container">
+    <div class="status-header">
+      <h2>System Status</h2>
+      <div>
+        <button id="statusRefreshBtn" class="btn-icon" onclick="loadStatusPage()">&circlearrowleft;</button>
+        <button class="btn-icon" onclick="showScreen('hubScreen')">&times;</button>
+      </div>
+    </div>
+    <div class="status-body" id="statusContent">
+      <div class="empty-state">Press Refresh to check status</div>
+    </div>
+  </div>
+</div>
+
 <!-- ===== DONATE SCREEN ===== -->
 <div id="donateScreen" class="screen">
-  <div class="screen-container">
-    <div class="screen-card">
-      <div class="screen-card-header">
-        <h2>Support GIOAI</h2>
+  <div class="donate-container">
+    <div class="donate-header">
+      <h2>Support GIOAI</h2>
+      <button id="donateBackBtn" class="btn-icon">&times;</button>
+    </div>
+    <div class="donate-body">
+      <p>GIOAI is free to use. If you find it useful, consider supporting development!</p>
+      <a href="https://www.paypal.me/giannikeita" target="_blank" class="btn btn-paypal">Donate with PayPal</a>
+      <button class="btn" disabled>Card (Coming Soon)</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== ADMIN SCREEN ===== -->
+<div id="adminScreen" class="screen">
+  <div class="admin-container">
+    <div class="admin-header">
+      <h2>Admin Panel</h2>
+      <button id="adminBackBtn" class="btn-icon">&times;</button>
+    </div>
+    <div class="admin-body">
+
+      <!-- Admin Auth -->
+      <div id="adminAuthSection" class="admin-section" style="text-align:center">
+        <h3>Authenticate</h3>
+        <input type="password" id="adminPassword" placeholder="Enter admin password" style="margin-bottom:.6rem;width:100%;max-width:300px">
+        <button id="adminLoginBtn" class="btn btn-primary" style="width:100%;max-width:300px">Login</button>
+        <div id="adminAuthError" class="admin-result" style="color:var(--danger);margin-top:.4rem;display:none"></div>
       </div>
-      <div class="screen-card-body donate-body">
-        <p>GIOAI is free to use. If you find it useful, consider supporting development!</p>
-        <a href="https://www.paypal.me/giannikeita" target="_blank" class="btn btn-paypal btn-block">Donate with PayPal</a>
-        <button class="btn btn-ghost btn-block" disabled>Card (Coming Soon)</button>
+
+      <!-- Admin Content (hidden until auth) -->
+      <div id="adminContent" style="display:none">
+
+        <!-- Give Slots -->
+        <div class="admin-section">
+          <h3>Give Slots</h3>
+          <div class="form-group"><label>Username</label><input type="text" id="adminUsername" placeholder="Target username"></div>
+          <div class="form-group"><label>Amount</label><input type="number" id="adminAmount" placeholder="Slots to add" min="1" value="1"></div>
+          <div class="form-group"><label>Admin Key</label><input type="password" id="adminKey" placeholder="Admin secret key"></div>
+          <button id="adminGiveSlotsBtn" class="btn btn-primary">Give Slots</button>
+          <div id="adminResult" class="admin-result"></div>
+        </div>
+
+        <!-- Platform Status Controls -->
+        <div class="admin-section">
+          <h3>Platform Status
+            <button id="adminCheckPlatformsBtn" class="btn btn-small" style="float:right">Check Now</button>
+          </h3>
+          <div id="adminPlatformStatus">
+            <div class="platform-status-item">
+              <span class="ps-name">LanguageNut</span>
+              <span class="ps-indicator checking">Checking...</span>
+            </div>
+            <div class="platform-status-item">
+              <span class="ps-name">Seneca</span>
+              <span class="ps-indicator checking">Checking...</span>
+            </div>
+            <div class="platform-status-item">
+              <span class="ps-name">Sparx</span>
+              <span class="ps-indicator checking">Checking...</span>
+            </div>
+            <div class="platform-status-item">
+              <span class="ps-name">Worker</span>
+              <span class="ps-indicator checking">Checking...</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Announcements -->
+        <div class="admin-section">
+          <h3>Send Announcement</h3>
+          <div class="form-group">
+            <textarea id="adminAnnouncementMsg" rows="3" placeholder="Write announcement..." style="width:100%"></textarea>
+          </div>
+          <div class="form-group" style="display:flex;gap:8px;align-items:center">
+            <label>Type:</label>
+            <select id="adminAnnouncementType">
+              <option value="info">Info</option>
+              <option value="warning">Warning</option>
+              <option value="error">Error</option>
+            </select>
+            <button id="adminAnnouncementBtn" class="btn btn-primary">Send</button>
+          </div>
+          <div id="adminAnnouncementResult" class="admin-result"></div>
+        </div>
+
+        <!-- Blacklist -->
+        <div class="admin-section">
+          <h3>Blacklist Management</h3>
+          <div class="form-group" style="display:flex;gap:8px;align-items:center">
+            <input type="text" id="adminBlacklistUser" placeholder="Username">
+            <select id="adminBlacklistAction">
+              <option value="add">Add</option>
+              <option value="remove">Remove</option>
+              <option value="list">List All</option>
+            </select>
+            <button id="adminBlacklistBtn" class="btn btn-primary btn-small">Go</button>
+          </div>
+          <div id="adminBlacklistResult" class="admin-result"></div>
+        </div>
+
+        <!-- Platform Status Setter -->
+        <div class="admin-section">
+          <h3>Set Platform Status</h3>
+          <div class="form-group" style="display:flex;gap:8px;align-items:center">
+            <select id="adminStatusPlatform">
+              <option value="languagenut">LanguageNut</option>
+              <option value="seneca">Seneca</option>
+              <option value="sparx">Sparx</option>
+            </select>
+            <select id="adminStatusValue">
+              <option value="online">Online</option>
+              <option value="maintenance">Maintenance</option>
+              <option value="offline">Offline</option>
+            </select>
+            <button id="adminPlatStatusBtn" class="btn btn-primary btn-small">Set</button>
+          </div>
+          <div id="adminStatusResult" class="admin-result"></div>
+        </div>
+
+        <!-- Worker -->
+        <div class="admin-section" style="text-align:center">
+          <button id="adminLogoutBtn" class="btn btn-danger" style="width:100%">Logout</button>
+        </div>
+
       </div>
     </div>
   </div>
@@ -410,25 +605,7 @@
   </div>
 </div>
 
-<!-- ===== NOTIFICATIONS OVERLAY ===== -->
-<div id="notifOverlay" class="notif-overlay" style="display:none">
-  <div class="notif-modal">
-    <div class="notif-header">
-      <h3>Notifications</h3>
-      <button id="notifClose" class="btn-icon">&times;</button>
-    </div>
-    <div class="notif-tabs">
-      <button class="notif-tab active" data-pane="announcements">Announcements</button>
-      <button class="notif-tab" data-pane="changelog">Updates</button>
-    </div>
-    <div class="notif-pane active" id="pane-announcements">
-      <div id="announcementListOverlay" class="announcement-list"><div class="empty-state">No announcements</div></div>
-    </div>
-    <div class="notif-pane" id="pane-changelog">
-      <div id="changelogList" class="changelog-list"><div class="empty-state">No updates</div></div>
-    </div>
-  </div>
-</div>
+
 
 <!-- ===== PLATFORM LOADING OVERLAY ===== -->
 <div id="platformLoading" class="overlay" style="display:none">
@@ -452,4 +629,5 @@
 <script src="assets/js/main.js"></script>
 </body>
 </html>
+
 
